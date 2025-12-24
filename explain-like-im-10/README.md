@@ -1,19 +1,54 @@
 # Explain Like I'm 10 - Frontend
 
-A modern React application that provides age-appropriate explanations for various topics using AI. The interface features real-time streaming responses, voice input, and an interactive chat experience.
+A modern React application that provides age-appropriate explanations for various topics using AI with real-time streaming, intent inference, and interactive quiz mode.
 
 ## Features
 
-- 🎯 **Age-Appropriate Explanations**: Customize explanations based on age level (5-35 years)
-- ⚡ **Real-Time Streaming**: AI responses appear live as they're generated
-- 💬 **Interactive Chat**: Multi-chat support with persistent history
-- 🎤 **Voice Input**: Speech-to-text support using Web Speech API
-- 📝 **Answer Evaluation**: AI provides feedback when you answer questions
-- 🔊 **Audio Playback**: Listen to explanations with text-to-speech
-- 📚 **Topic Packs**: Pre-defined topics organized by category
-- 💾 **Local Persistence**: Chats saved to localStorage with 24-hour retention
-- 🎨 **Modern UI**: Clean, responsive design with color-coded sections
-- 🔄 **Context-Aware**: AI understands follow-up questions and answers
+### 🎯 Dual Modes
+- **Explain Mode**: Ask questions and get AI-generated explanations with examples
+- **Quiz Mode**: Interactive multiple-choice quizzes with instant feedback
+
+### 🧠 Intelligent Features
+- **Intent Inference**: AI automatically detects if you're asking a question or answering one
+- **Context-Aware**: Maintains conversation history for coherent multi-turn dialogues
+- **Age-Appropriate**: Customize explanations based on age level (5-35 years)
+- **Answer Evaluation**: AI provides encouraging feedback when you answer questions
+
+### ⚡ Real-Time Experience
+- **Streaming Responses**: AI responses appear live as they're generated
+- **Loading States**: Visual feedback with spinners during generation
+- **Typing Animation**: Cursor effect during streaming
+
+### 🎮 Quiz Mode Features
+- **Setup Screen**: Configure topic, difficulty, and age before starting
+- **Difficulty Levels**: Visual slider for Easy, Medium, or Hard
+- **Multiple Choice**: 4 options per question with visual feedback
+- **Instant Feedback**: Green (correct) or red (incorrect) indicators
+- **Score Tracking**: Real-time score and progress display
+- **Comprehensive Review**: See all answers and explanations at the end
+- **Retry Option**: Generate new quiz with adjusted settings
+
+### 💬 Chat Features
+- **Multi-Chat Support**: Manage multiple conversation threads
+- **Chat Persistence**: Conversations saved locally for 24 hours
+- **Auto-Scroll**: Seamless navigation to latest messages
+- **Chat History**: Access previous conversations
+
+### 🎤 Input Methods
+- **Voice Input**: Speech-to-text using Web Speech API
+- **Text Input**: Multi-line textarea with auto-resize
+- **Quick Topics**: Pre-defined topic packs for quick start
+
+### 🔊 Media Features
+- **Audio Playback**: Text-to-speech narration of explanations
+- **Single-Play**: Automatic pause of other audio when playing
+- **Audio Controls**: Standard playback controls
+
+### 🎨 User Interface
+- **Three-Column Layout**: Left sidebar (chats/mode), center (content), right sidebar (settings)
+- **Responsive Design**: Adapts to different screen sizes
+- **Color-Coded Sections**: Visual distinction for Explanation, Example, Question, Feedback
+- **Modern Styling**: Clean, professional design with Inter font
 
 ## Tech Stack
 
@@ -87,21 +122,34 @@ npm run preview
 
 #### App Component (`App.jsx`)
 The main application component manages:
-- Real-time streaming responses from backend
-- Chat state with localStorage persistence
-- Voice input using Web Speech API
-- Active chat selection and switching
-- Age level configuration
-- Topic pack integration
-- Audio playback synchronization
-- Conversation context for intelligent routing
+- **Dual Modes**: Toggle between Explain and Quiz modes
+- **Quiz State**: Setup, generation, and completion flow
+- **Real-time Streaming**: SSE responses from backend with intent inference
+- **Chat State**: localStorage persistence with 24-hour retention
+- **Voice Input**: Web Speech API integration
+- **Active Chat**: Selection and switching between conversations
+- **Age Level**: Configuration for content adaptation
+- **Topic Packs**: Integration with pre-defined topics
+- **Audio Playback**: Synchronization across messages
+- **Conversation Context**: Full history for intelligent routing
 
 #### State Management
 ```javascript
+// Core state
 - chats: Array of chat objects with messages (persisted to localStorage)
 - activeChatId: Currently selected chat ID
 - input: User input text
 - age: Selected age level (5-35)
+
+// Mode and quiz state
+- mode: "explain" or "quiz"
+- quizState: { topic, questions, currentIndex, score, answers, showingFeedback, completed }
+- quizDifficulty: "easy", "medium", or "hard"
+- showQuizSetup: Boolean for setup UI visibility
+- quizTopic: Topic for quiz generation
+- isGeneratingQuiz: Loading state for quiz generation
+
+// UI state
 - packs: Available topic packs from API
 - selectedPack: Currently selected topic pack
 - isListening: Voice input recording state
@@ -112,7 +160,9 @@ The main application component manages:
 The application uses a three-column grid layout:
 
 1. **Left Sidebar (286px)**
+   - Mode toggle buttons (Explain / Quiz)
    - "Start New Chat" button
+   - Chat list with active highlighting
    - Chat history list with text ellipsis
    - Click to switch between chats
    - Active chat highlighted
@@ -183,18 +233,42 @@ The application uses a three-column grid layout:
 
 ### Intelligent Conversation
 
-**Context-Aware Responses:**
-- Full conversation history sent with each request
-- AI automatically detects:
-  - New questions → Provides explanation
-  - Answers to AI questions → Provides feedback
-- Seamless follow-up questions supported
+**Intent Inference with LangGraph:**
+- LangGraph workflow automatically detects user intent
+- LLM-powered intent classification determines:
+  - **Question Intent** → Provides explanation → example → safety check → follow-up question
+  - **Answer Intent** → Evaluates response → provides feedback
+- Conditional routing based on conversation context
+- Full conversation history maintained for context-aware responses
 
 **Answer Evaluation:**
 - When you answer an AI's question, it provides encouraging feedback
 - Acknowledges correct understanding
 - Gently corrects misconceptions
 - Builds on your knowledge
+
+### Quiz Mode
+
+**Quiz Setup:**
+1. Click "Quiz" mode button in left sidebar
+2. Enter a topic or click "Use Current Topic" (if chatting)
+3. Select difficulty: Easy, Medium, or Hard (slider)
+4. Adjust age level (5-35 years)
+5. Click "Generate Quiz (5 questions)"
+6. Loading spinner shows progress during generation
+
+**Taking the Quiz:**
+- Multiple choice questions (4 options)
+- Click an option to submit answer
+- Immediate feedback with checkmark (correct) or X (incorrect)
+- Explanation provided for each answer
+- Score tracked throughout quiz
+- Click "Next" to continue after viewing feedback
+
+**Completion:**
+- Final score displayed at end
+- Option to start new quiz
+- Quiz state persisted in localStorage
 
 ### Message Display
 

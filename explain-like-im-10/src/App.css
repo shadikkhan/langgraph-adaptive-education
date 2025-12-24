@@ -168,3 +168,126 @@ audio {
     opacity: 0;
   }
 }
+
+/* Quiz Mode Styles */
+.quiz-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.quiz-header {
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.quiz-header h2 {
+  margin: 0 0 12px 0;
+  color: #1f2937;
+}
+
+.quiz-progress {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.quiz-question {
+  flex: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.quiz-question h3 {
+  font-size: 1.3em;
+  margin-bottom: 24px;
+  color: #1f2937;
+}
+
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quiz-option {
+  transition: all 0.2s;
+}
+
+.quiz-option:hover:not(:disabled) {
+  border-color: #3b82f6 !important;
+  background: #eff6ff !important;
+  transform: translateX(4px);
+}
+
+.quiz-option.correct {
+  background: #d1fae5 !important;
+  border-color: #10b981 !important;
+}
+
+.quiz-option.incorrect {
+  background: #fee2e2 !important;
+  border-color: #ef4444 !important;
+}
+
+.quiz-results {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.quiz-results h2 {
+  color: #1f2937;
+  margin-bottom: 16px;
+}
+
+.final-score {
+  padding: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 16px;
+  font-weight: bold;
+}
+
+.review-item {
+  text-align: left;
+  background: white;
+}
+
+.mode-toggle button {
+  background: #f3f4f6;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  color: #6b7280;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.mode-toggle button:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.mode-toggle button.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+/* Spinner animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}

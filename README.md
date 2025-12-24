@@ -9,7 +9,9 @@ This project demonstrates advanced AI orchestration using **LangChain** and **La
 - **Generates age-appropriate explanations** (ages 5-35) with real-time streaming
 - **Creates relatable examples** tailored to the user's context
 - **Produces thought-provoking follow-up questions** to enhance learning
+- **Infers user intent** automatically (new question, answer, or follow-up)
 - **Evaluates user answers** with encouraging, personalized feedback
+- **Interactive Quiz Mode** with multiple-choice questions and instant feedback
 - **Ensures content safety** through multi-stage validation
 - **Provides audio narration** using text-to-speech
 - **Manages multi-conversation chat history** with local persistence
@@ -19,7 +21,7 @@ This project demonstrates advanced AI orchestration using **LangChain** and **La
 ## 🧠 AI & Technology Stack
 
 ### Backend - AI Orchestration
-- **LangGraph**: State machine-based workflow orchestration for multi-step reasoning
+- **LangGraph**: State machine-based workflow orchestration with intent inference
 - **LangChain**: LLM integration framework with Ollama
 - **Ollama**: Local LLM deployment (llama3.1:8b model)
 - **FastAPI**: High-performance async API framework with Server-Sent Events (SSE)
@@ -31,12 +33,12 @@ This project demonstrates advanced AI orchestration using **LangChain** and **La
 - **Vite**: Next-generation frontend tooling
 - **Web Speech API**: Voice-to-text input support
 - **Server-Sent Events (SSE)**: Real-time streaming from backend
-- **CSS Grid/Flexbox**: Responsive three-column layout
+- **CSS Grid/Flexbox**: Responsive three-column layout with quiz mode
 - **Inter Font**: Professional typography
 
 ## 🔄 LangGraph Workflow Architecture
 
-The application uses a **directed acyclic graph (DAG)** to orchestrate the explanation generation process with intelligent routing:
+The application uses a **directed acyclic graph (DAG)** with **intelligent intent inference** to orchestrate the explanation generation process:
 
 ```
 ┌─────────────┐
@@ -45,18 +47,18 @@ The application uses a **directed acyclic graph (DAG)** to orchestrate the expla
        │
        v
 ┌──────────────────────┐
-│  Context Analysis    │  ← Analyze conversation history
-│  (Smart Routing)     │    Detect if answer vs question
+│  Intent Inference    │  ← Analyze conversation history
+│  (LLM-powered)       │    Classify: new_question | answer | followup
 └──────┬───────────┬───┘
        │           │
    Answer?      Question?
        │           │
        v           v
 ┌─────────────┐  ┌─────────────────┐
-│  Feedback   │  │   Simplify      │  ← Generate age-appropriate explanation
-│  (LLM Node) │  │   (LLM Node)    │
-└─────────────┘  └──────┬──────────┘
-                        │
+│  Evaluate   │  │   Simplify      │  ← Generate age-appropriate explanation
+│  Answer     │  │   (LLM Node)    │
+│ (LLM Node)  │  └──────┬──────────┘
+└─────────────┘         │
                         v
                  ┌─────────────────┐
                  │  Add Example    │  ← Create relatable example
@@ -77,26 +79,44 @@ The application uses a **directed acyclic graph (DAG)** to orchestrate the expla
                         │
                         v
                  ┌─────────────┐
+                 │  Format     │  ← Structure output based on intent
+                 └──────┬──────┘
+                        │
+                        v
+                 ┌─────────────┐
                  │     END     │
                  └─────────────┘
 ```
 
 ### Key LangGraph Features Demonstrated
 
-1. **Streaming State Management**: Real-time updates to conversation context
+1. **Intent Inference Node**: LLM-powered classification of user input
+   ```python
+   def infer_intent(state: ExplainState):
+       # Uses LLM to determine: new_question, answer, or followup
+       # Returns intent for conditional routing
+   ```
+
+2. **Conditional Routing**: Dynamic workflow based on inferred intent
+   ```python
+   def route_by_intent(state: ExplainState):
+       intent = state.get("intent", "new_question")
+       if intent == "answer":
+           return "evaluate"
+       else:
+           return "simplify"
+   ```
+
+3. **Streaming State Management**: Real-time updates to conversation context
    ```python
    async def stream_explain_graph(topic: str, age: int, context: str = ""):
-       # Intelligent routing based on conversation history
+       # Infers intent, streams appropriate response
        # Yields streaming chunks for real-time UI updates
    ```
 
-2. **Conditional Routing**: Dynamic workflow based on user input and context
-   - Answer detection → Feedback pathway
-   - New question → Full explanation pathway
-   
-3. **Multi-Agent Reasoning**: Each node serves as a specialized agent
-4. **Sequential Processing**: Ensures logical flow of explanation generation
-5. **Context-Aware Processing**: Maintains full conversation history for intelligent responses
+4. **Multi-Agent Reasoning**: Each node serves as a specialized agent
+5. **Sequential Processing**: Ensures logical flow of explanation generation
+6. **Context-Aware Processing**: Maintains full conversation history for intelligent responses
 
 ## 🎯 AI Capabilities & Skills Demonstrated
 
@@ -226,23 +246,68 @@ Frontend runs at: `http://localhost:5173`
 
 ### Core Endpoints
 
-#### POST /explain
+#### POST /explain/stream
+Streams explanations in real-time with intent inference
 ```json
 {
   "topic": "Quantum Physics",
-  "age": 15
+  "age": 15,
+  "context": "Previous conversation history..."
+}
+```
+
+**SSE Stream Events:**
+```json
+{"type": "intent", "intent": "new_question"}
+{"type": "section", "section": "Explanation"}
+{"type": "content", "section": "Explanation", "text": "Quantum physics is..."}
+{"type": "section", "section": "Example"}
+{"type": "content", "section": "Example", "text": "Imagine you have..."}
+{"type": "section", "section": "Question"}
+{"type": "content", "section": "Question", "text": "What do you think..."}
+{"type": "audio", "url": "/audio/1703345678.mp3"}
+{"type": "done"}
+```
+
+#### POST /quiz/generate
+Generate interactive quiz questions
+```json
+{
+  "topic": "Solar System",
+  "age": 12,
+  "num_questions": 5,
+  "difficulty": "medium"
 }
 ```
 
 **Response:**
 ```json
 {
-  "sections": {
-    "Explanation": "Quantum physics is the study of...",
-    "Example": "Imagine you have a coin that...",
-    "Question": "What do you think would happen if..."
-  },
-  "audio_url": "/audio/1703345678.mp3"
+  "questions": [
+    {
+      "question": "How many planets are in our solar system?",
+      "options": {
+        "A": "8 planets",
+        "B": "9 planets",
+        "C": "7 planets",
+        "D": "10 planets"
+      },
+      "correct": "A",
+      "explanation": "There are 8 planets since Pluto was reclassified as a dwarf planet in 2006."
+    }
+  ],
+  "topic": "Solar System"
+}
+```
+
+#### POST /quiz/evaluate
+Evaluate quiz answer
+```json
+{
+  "question": "How many planets are in our solar system?",
+  "correct_answer": "A",
+  "user_answer": "B",
+  "age": 12
 }
 ```
 
@@ -254,22 +319,51 @@ Streams generated audio with proper CORS headers
 
 ## 🎨 Features
 
-### Intelligent Adaptability
+### 🧠 Intelligent Intent Inference
+- **LLM-Powered Classification**: Automatically detects if user is:
+  - Asking a new question
+  - Answering a previous question
+  - Asking a follow-up question
+- **Context-Aware Routing**: Workflows adapt based on conversation history
+- **Smart Feedback**: Encouraging responses when users answer questions
+
+### 🎯 Interactive Quiz Mode
+- **Topic-Based Quiz Generation**: Create quizzes on any subject
+- **Difficulty Levels**: Easy, Medium, Hard with visual slider
+- **Multiple Choice Format**: 4 options per question
+- **Instant Feedback**: Visual indicators (green/red) for correct/incorrect
+- **Score Tracking**: Real-time score and progress display
+- **Comprehensive Review**: See all answers and explanations at the end
+- **Retry Option**: Generate new quiz with same or different topic
+- **Age-Appropriate Questions**: Content tailored to user's age level
+
+### ⚡ Real-Time Streaming
+- **Server-Sent Events (SSE)**: Token-by-token streaming from LLM
+- **Progressive UI Updates**: Content appears as it's generated
+- **Loading States**: Visual spinners and feedback during generation
+- **Smooth Animations**: Typing cursor effect during streaming
+
+### 🎭 Intelligent Adaptability
 - **Age-Responsive**: Content complexity scales from ages 5 to 35
 - **Context-Aware Examples**: Generates examples relevant to age group
 - **Progressive Questioning**: Encourages critical thinking at appropriate levels
+- **Conversation Memory**: Maintains context across multiple turns
 
-### User Experience
+### 🎮 User Experience
+- **Dual Modes**: Switch between Explain and Quiz modes
 - **Multi-Chat Support**: Manage multiple conversation threads
 - **Auto-Scroll**: Seamless chat experience
+- **Voice Input**: Speech-to-text with microphone button
 - **Audio Playback**: Single-play enforcement across multiple messages
 - **Topic Packs**: Quick-start with curated topics
+- **Local Persistence**: Chats saved for 24 hours
 
-### Technical Excellence
+### 🛠️ Technical Excellence
 - **Type Safety**: Pydantic models for data validation
 - **CORS Configured**: Secure cross-origin resource sharing
 - **Clean Architecture**: Separation of concerns
-- **Responsive Design**: Three-column grid layout
+- **Responsive Design**: Three-column grid layout with quiz mode
+- **Error Handling**: Graceful fallbacks and user feedback
 
 ## 🔧 Configuration
 

@@ -9,6 +9,45 @@ from config import llm
 # -----------------------------
 # GRAPH NODES
 # -----------------------------
+def infer_intent(state: ExplainState):
+    """Infer the user's intent from their input and context"""
+    topic = state['topic']
+    context = state.get('context', '')
+    
+    # If no context, it's definitely a new question
+    if not context:
+        return {"intent": "new_question"}
+    
+    # Use LLM to infer intent
+    intent_prompt = f"""
+Analyze the user's input and conversation history to determine their intent.
+
+Conversation history:
+{context}
+
+User's latest input: {topic}
+
+Determine if this is:
+1. "new_question" - User is asking about a new topic
+2. "answer" - User is answering a previous question
+3. "followup" - User is asking a follow-up question about the current topic
+
+Respond with ONLY one word: new_question, answer, or followup
+"""
+    
+    response = llm.invoke(intent_prompt).strip().lower()
+    
+    # Parse and validate intent
+    if "answer" in response:
+        intent = "answer"
+    elif "followup" in response or "follow" in response:
+        intent = "followup"
+    else:
+        intent = "new_question"
+    
+    return {"intent": intent}
+
+
 def simplify(state: ExplainState):
     """Simplify the topic for the given age level"""
     prompt = f"""
@@ -77,39 +116,104 @@ Remove Here's a thinking question or similar metadata if present.
     return {"question": llm.invoke(prompt).strip()}
 
 
+def evaluate_answer(state: ExplainState):
+    """Evaluate user's answer to a previous question"""
+    prompt = f"""
+You are a helpful teacher evaluating a student's answer.
+
+Student's age: {state['age']}
+Previous conversation:
+{state.get('context', '')}
+
+Student's latest response: {state['topic']}
+
+Provide encouraging feedback:
+- Acknowledge what they got right
+- Gently correct any misconceptions
+- Build on their understanding
+- Keep it age-appropriate for {state['age']} years old
+- Be positive and encouraging
+
+Keep your response conversational and friendly.
+"""
+    return {"feedback": llm.invoke(prompt).strip()}
+
+
 def format_out(state: ExplainState):
     """Format the final output"""
-    return {
-        "output": {
-            "topic": state["topic"],
-            "age": state["age"],
-            "explanation": state["safe_text"],
-            "example": state["example"],
-            "question":state["question"]
+    intent = state.get("intent", "new_question")
+    
+    if intent == "answer":
+        # If user answered a question, return feedback
+        return {
+            "output": {
+                "intent": "answer",
+                "feedback": state.get("feedback", "")
+            }
         }
-    }
+    else:
+        # If new question or followup, return explanation
+        return {
+            "output": {
+                "intent": intent,
+                "topic": state["topic"],
+                "age": state["age"],
+                "explanation": state.get("safe_text", ""),
+                "example": state.get("example", ""),
+                "question": state.get("question", "")
+            }
+        }
 
 
 # -----------------------------
 # BUILD GRAPH
 # -----------------------------
+def route_by_intent(state: ExplainState):
+    """Route to different nodes based on intent"""
+    intent = state.get("intent", "new_question")
+    
+    if intent == "answer":
+        return "evaluate"
+    else:
+        return "simplify"
+
+
 def build_explain_graph():
-    """Build and compile the explanation workflow graph"""
+    """Build and compile the explanation workflow graph with intent inference"""
     graph = StateGraph(ExplainState)
     
     # Add nodes
+    graph.add_node("infer_intent", infer_intent)
     graph.add_node("simplify", simplify)
     graph.add_node("example", example)
     graph.add_node("safety", safety)
     graph.add_node("question", question)
+    graph.add_node("evaluate", evaluate_answer)
     graph.add_node("format", format_out)
     
-    # Define workflow
-    graph.set_entry_point("simplify")
+    # Define workflow with intent-based routing
+    graph.set_entry_point("infer_intent")
+    
+    # Route based on intent
+    graph.add_conditional_edges(
+        "infer_intent",
+        route_by_intent,
+        {
+            "evaluate": "evaluate",
+            "simplify": "simplify"
+        }
+    )
+    
+    # Explanation path
     graph.add_edge("simplify", "example")
     graph.add_edge("example", "safety")
     graph.add_edge("safety", "question")
     graph.add_edge("question", "format")
+    
+    # Answer evaluation path
+    graph.add_edge("evaluate", "format")
+    
+    # End
     graph.add_edge("format", END)
     
     return graph.compile()
@@ -123,27 +227,43 @@ explain_graph = build_explain_graph()
 # STREAMING FUNCTION
 # -----------------------------
 async def stream_explain_graph(topic: str, age: int, context: str = ""):
-    """Stream the explanation generation process in real-time"""
+    """Stream the explanation generation process in real-time with intent inference"""
     import re
     
-    # Improved detection: check if this is an answer to a previous question
-    is_answer = False
-    if context and "Question:" in context:
-        # Check if the input looks like an answer vs a question
-        # Questions typically contain: question words, question marks, "what/how/why/when/where/who"
-        question_indicators = ['?', 'what', 'how', 'why', 'when', 'where', 'who', 'which', 'explain', 'tell me']
-        topic_lower = topic.lower()
+    # Step 1: Infer intent
+    if not context:
+        intent = "new_question"
+    else:
+        intent_prompt = f"""
+Analyze the user's input and conversation history to determine their intent.
+
+Conversation history:
+{context}
+
+User's latest input: {topic}
+
+Determine if this is:
+1. "new_question" - User is asking about a new topic
+2. "answer" - User is answering a previous question
+3. "followup" - User is asking a follow-up question about the current topic
+
+Respond with ONLY one word: new_question, answer, or followup
+"""
         
-        # If it has question indicators, it's likely a new question
-        has_question_indicator = any(indicator in topic_lower for indicator in question_indicators)
+        response = llm.invoke(intent_prompt).strip().lower()
         
-        # If it's short (under 15 words) AND doesn't have question indicators, likely an answer
-        is_short = len(topic.split()) < 15
-        
-        if is_short and not has_question_indicator:
-            is_answer = True
+        # Parse and validate intent
+        if "answer" in response:
+            intent = "answer"
+        elif "followup" in response or "follow" in response:
+            intent = "followup"
+        else:
+            intent = "new_question"
     
-    if is_answer:
+    # Send intent to client
+    yield {"type": "intent", "intent": intent}
+    
+    if intent == "answer":
         # Provide feedback on the answer
         yield {"type": "section", "section": "Feedback"}
         
@@ -172,7 +292,7 @@ Keep your response conversational and friendly.
         return  # Exit early for answer feedback
     
     # Provide topic explanation
-    # Step 1: Simplify
+    # Step 2: Simplify
     yield {"type": "section", "section": "Explanation"}
     
     simplify_prompt = f"""
