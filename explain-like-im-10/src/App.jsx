@@ -5,8 +5,9 @@ import "./App.css";
 const CHAT_RETENTION_HOURS = Number(import.meta.env.VITE_CHAT_RETENTION_HOURS) || 24;
 const CHAT_RETENTION_MS = CHAT_RETENTION_HOURS * 60 * 60 * 1000;
 
-// LocalStorage key
-const CHATS_STORAGE_KEY = 'explain-like-im-10-chats';
+// LocalStorage keys
+const CHATS_STORAGE_KEY = 'chat_list';
+const ACTIVE_CHAT_ID_KEY = 'active_chat_id';
 
 export default function App() {
   const [chats, setChats] = useState([]);
@@ -37,6 +38,19 @@ export default function App() {
           // Only set chats if we have valid ones
           if (validChats.length > 0) {
             setChats(validChats);
+            
+            // Restore active chat ID if it still exists
+            const storedActiveChatId = localStorage.getItem(ACTIVE_CHAT_ID_KEY);
+            if (storedActiveChatId) {
+              const activeChatIdNum = Number(storedActiveChatId);
+              // Only restore if the chat still exists in valid chats
+              if (validChats.some(chat => chat.id === activeChatIdNum)) {
+                setActiveChatId(activeChatIdNum);
+              } else {
+                // Clear invalid active chat ID
+                localStorage.removeItem(ACTIVE_CHAT_ID_KEY);
+              }
+            }
           }
           
           // Update localStorage if we removed any chats
@@ -63,6 +77,15 @@ export default function App() {
     }
   }, [chats]);
 
+  // Save active chat ID to localStorage whenever it changes
+  useEffect(() => {
+    if (activeChatId !== null) {
+      localStorage.setItem(ACTIVE_CHAT_ID_KEY, String(activeChatId));
+    } else {
+      localStorage.removeItem(ACTIVE_CHAT_ID_KEY);
+    }
+  }, [activeChatId]);
+
   // Set up interval to check for expired chats every hour
   useEffect(() => {
     const checkExpiredChats = () => {
@@ -77,8 +100,19 @@ export default function App() {
         if (validChats.length !== prevChats.length) {
           if (validChats.length > 0) {
             localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(validChats));
+            
+            // Check if active chat was removed
+            setActiveChatId(prevActiveId => {
+              if (prevActiveId && !validChats.some(chat => chat.id === prevActiveId)) {
+                localStorage.removeItem(ACTIVE_CHAT_ID_KEY);
+                return null;
+              }
+              return prevActiveId;
+            });
           } else {
             localStorage.removeItem(CHATS_STORAGE_KEY);
+            localStorage.removeItem(ACTIVE_CHAT_ID_KEY);
+            setActiveChatId(null);
           }
         }
         
