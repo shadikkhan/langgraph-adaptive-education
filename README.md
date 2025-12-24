@@ -6,12 +6,15 @@ An intelligent, age-adaptive educational platform powered by **LangGraph** workf
 
 This project demonstrates advanced AI orchestration using **LangChain** and **LangGraph** to create a sophisticated educational assistant that:
 
-- Generates age-appropriate explanations (ages 5-35)
-- Creates relatable examples tailored to the user's context
-- Produces thought-provoking follow-up questions
-- Ensures content safety through multi-stage validation
-- Provides audio narration using text-to-speech
-- Manages multi-conversation chat history
+- **Generates age-appropriate explanations** (ages 5-35) with real-time streaming
+- **Creates relatable examples** tailored to the user's context
+- **Produces thought-provoking follow-up questions** to enhance learning
+- **Evaluates user answers** with encouraging, personalized feedback
+- **Ensures content safety** through multi-stage validation
+- **Provides audio narration** using text-to-speech
+- **Manages multi-conversation chat history** with local persistence
+- **Supports voice input** using Web Speech API for hands-free interaction
+- **Streams AI responses** in real-time for immediate engagement
 
 ## 🧠 AI & Technology Stack
 
@@ -19,19 +22,21 @@ This project demonstrates advanced AI orchestration using **LangChain** and **La
 - **LangGraph**: State machine-based workflow orchestration for multi-step reasoning
 - **LangChain**: LLM integration framework with Ollama
 - **Ollama**: Local LLM deployment (llama3.1:8b model)
-- **FastAPI**: High-performance async API framework
+- **FastAPI**: High-performance async API framework with Server-Sent Events (SSE)
 - **Pydantic**: Type-safe data validation and modeling
 - **gTTS**: Google Text-to-Speech for audio generation
 
 ### Frontend - Modern React
 - **React 18**: Component-based UI with hooks
 - **Vite**: Next-generation frontend tooling
+- **Web Speech API**: Voice-to-text input support
+- **Server-Sent Events (SSE)**: Real-time streaming from backend
 - **CSS Grid/Flexbox**: Responsive three-column layout
 - **Inter Font**: Professional typography
 
 ## 🔄 LangGraph Workflow Architecture
 
-The application uses a **directed acyclic graph (DAG)** to orchestrate the explanation generation process:
+The application uses a **directed acyclic graph (DAG)** to orchestrate the explanation generation process with intelligent routing:
 
 ```
 ┌─────────────┐
@@ -39,80 +44,102 @@ The application uses a **directed acyclic graph (DAG)** to orchestrate the expla
 └──────┬──────┘
        │
        v
-┌─────────────────┐
-│   Simplify      │  ← Generate age-appropriate explanation
-│   (LLM Node)    │
-└──────┬──────────┘
-       │
-       v
-┌─────────────────┐
-│  Add Example    │  ← Create relatable example
-│   (LLM Node)    │
-└──────┬──────────┘
-       │
-       v
-┌─────────────────┐
-│ Think Question  │  ← Generate thought-provoking question
-│   (LLM Node)    │
-└──────┬──────────┘
-       │
-       v
-┌─────────────────┐
-│  Safety Check   │  ← Validate content appropriateness
-│   (LLM Node)    │
-└──────┬──────────┘
-       │
-       v
-┌─────────────┐
-│     END     │
-└─────────────┘
+┌──────────────────────┐
+│  Context Analysis    │  ← Analyze conversation history
+│  (Smart Routing)     │    Detect if answer vs question
+└──────┬───────────┬───┘
+       │           │
+   Answer?      Question?
+       │           │
+       v           v
+┌─────────────┐  ┌─────────────────┐
+│  Feedback   │  │   Simplify      │  ← Generate age-appropriate explanation
+│  (LLM Node) │  │   (LLM Node)    │
+└─────────────┘  └──────┬──────────┘
+                        │
+                        v
+                 ┌─────────────────┐
+                 │  Add Example    │  ← Create relatable example
+                 │   (LLM Node)    │
+                 └──────┬──────────┘
+                        │
+                        v
+                 ┌─────────────────┐
+                 │ Safety Check    │  ← Validate content appropriateness
+                 │   (LLM Node)    │
+                 └──────┬──────────┘
+                        │
+                        v
+                 ┌─────────────────┐
+                 │ Think Question  │  ← Generate thought-provoking question
+                 │   (LLM Node)    │
+                 └──────┬──────────┘
+                        │
+                        v
+                 ┌─────────────┐
+                 │     END     │
+                 └─────────────┘
 ```
 
 ### Key LangGraph Features Demonstrated
 
-1. **State Management**: Maintains conversation context across nodes
+1. **Streaming State Management**: Real-time updates to conversation context
    ```python
-   class ExplainState(TypedDict):
-       topic: str
-       age: int
-       explanation: str
-       example: str
-       question: str
-       safe_text: str
+   async def stream_explain_graph(topic: str, age: int, context: str = ""):
+       # Intelligent routing based on conversation history
+       # Yields streaming chunks for real-time UI updates
    ```
 
-2. **Conditional Routing**: Dynamic workflow based on state
+2. **Conditional Routing**: Dynamic workflow based on user input and context
+   - Answer detection → Feedback pathway
+   - New question → Full explanation pathway
+   
 3. **Multi-Agent Reasoning**: Each node serves as a specialized agent
 4. **Sequential Processing**: Ensures logical flow of explanation generation
-5. **Error Handling**: Graceful degradation if any node fails
+5. **Context-Aware Processing**: Maintains full conversation history for intelligent responses
 
 ## 🎯 AI Capabilities & Skills Demonstrated
 
-### 1. **Dynamic Prompt Engineering**
-- Age-adaptive prompt templates
-- Context-aware content generation
-- Multi-turn conversation handling
+### 1. **Real-Time Streaming Architecture**
+- **Server-Sent Events (SSE)**: Streams AI responses token-by-token
+- **Async Processing**: Non-blocking response generation
+- **Progressive Enhancement**: UI updates as content arrives
+- **Optimistic UI**: Immediate feedback while AI processes
 
-### 2. **Workflow Orchestration with LangGraph**
+### 2. **Dynamic Prompt Engineering**
+- Age-adaptive prompt templates
+- Context-aware content generation with conversation history
+- Multi-turn conversation handling
+- Intent detection (answer vs. question recognition)
+
+### 3. **Workflow Orchestration with LangGraph**
 - **State Graph Design**: Manages complex multi-step AI workflows
 - **Node Specialization**: Each LangGraph node has a specific responsibility
+- **Conditional Routing**: Smart decision-making based on context
 - **Edge Management**: Controls the flow between AI processing steps
 - **State Persistence**: Maintains context throughout the workflow
 
-### 3. **LLM Integration Patterns**
+### 4. **Interactive Learning Features**
+- **Answer Evaluation**: AI provides encouraging feedback on user responses
+- **Conversation Context**: Full chat history sent with each request
+- **Intelligent Routing**: Automatically detects answers vs new questions
+- **Follow-up Support**: Maintains topic coherence across multiple exchanges
+
+### 5. **LLM Integration Patterns**
 - **Ollama Integration**: Local LLM deployment for privacy and control
 - **Temperature Control**: Fine-tuned for consistent, factual responses
-- **Streaming Support**: Ready for real-time response generation
+- **Streaming Support**: Real-time response generation with `astream()`
 - **Model Abstraction**: Easy to swap LLM providers
 
-### 4. **Content Safety & Validation**
+### 6. **Content Safety & Validation**
 - Multi-stage safety checking
 - Age-appropriate content filtering
 - Automated content review pipeline
 
-### 5. **Hybrid AI Pipeline**
+### 7. **Multimodal AI Pipeline**
 - LLM for content generation
-- TTS for multimodal output
+- TTS for audio output
+- Speech-to-text for voice input (Web Speech API)
 - Rule-based content parsing and formatting
 
 ## 📁 Project Structure

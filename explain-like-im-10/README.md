@@ -1,21 +1,29 @@
 # Explain Like I'm 10 - Frontend
 
-A modern React application that provides age-appropriate explanations for various topics using AI. The interface allows users to ask questions and receive explanations tailored to different age levels (5-35 years).
+A modern React application that provides age-appropriate explanations for various topics using AI. The interface features real-time streaming responses, voice input, and an interactive chat experience.
 
 ## Features
 
-- 🎯 **Age-Appropriate Explanations**: Customize explanations based on age level
-- 💬 **Chat Interface**: Multi-chat support with chat history
+- 🎯 **Age-Appropriate Explanations**: Customize explanations based on age level (5-35 years)
+- ⚡ **Real-Time Streaming**: AI responses appear live as they're generated
+- 💬 **Interactive Chat**: Multi-chat support with persistent history
+- 🎤 **Voice Input**: Speech-to-text support using Web Speech API
+- 📝 **Answer Evaluation**: AI provides feedback when you answer questions
 - 🔊 **Audio Playback**: Listen to explanations with text-to-speech
 - 📚 **Topic Packs**: Pre-defined topics organized by category
-- 🎨 **Modern UI**: Clean, responsive design with Inter font
+- 💾 **Local Persistence**: Chats saved to localStorage with 24-hour retention
+- 🎨 **Modern UI**: Clean, responsive design with color-coded sections
+- 🔄 **Context-Aware**: AI understands follow-up questions and answers
 
 ## Tech Stack
 
-- **React 18**: UI framework
+- **React 18**: UI framework with hooks
 - **Vite**: Build tool and dev server
+- **Server-Sent Events (SSE)**: Real-time streaming from backend
+- **Web Speech API**: Voice-to-text input
+- **LocalStorage API**: Chat persistence
 - **CSS3**: Custom styling with flexbox/grid layouts
-- **Google Fonts**: Inter font family
+- **Inter Font**: Professional typography
 
 ## Project Structure
 
@@ -79,20 +87,24 @@ npm run preview
 
 #### App Component (`App.jsx`)
 The main application component manages:
-- Chat state and history
-- Active chat selection
+- Real-time streaming responses from backend
+- Chat state with localStorage persistence
+- Voice input using Web Speech API
+- Active chat selection and switching
 - Age level configuration
 - Topic pack integration
 - Audio playback synchronization
+- Conversation context for intelligent routing
 
 #### State Management
 ```javascript
-- chats: Array of chat objects with messages
+- chats: Array of chat objects with messages (persisted to localStorage)
 - activeChatId: Currently selected chat ID
 - input: User input text
 - age: Selected age level (5-35)
 - packs: Available topic packs from API
 - selectedPack: Currently selected topic pack
+- isListening: Voice input recording state
 ```
 
 ### Layout
@@ -101,14 +113,21 @@ The application uses a three-column grid layout:
 
 1. **Left Sidebar (286px)**
    - "Start New Chat" button
-   - Chat history list
+   - Chat history list with text ellipsis
    - Click to switch between chats
+   - Active chat highlighted
 
 2. **Center Chat Area (flexible)**
    - Message display with auto-scroll
-   - Explanation, Example, and Question sections
-   - Audio player for each response
-   - Fixed input box at bottom
+   - Streaming AI responses with live cursor
+   - Color-coded sections:
+     - Green: Explanation
+     - Yellow: Example
+     - Blue: Question
+     - Purple: Feedback
+     - Orange: Audio
+   - Auto-growing textarea input
+   - Microphone and send buttons
 
 3. **Right Sidebar (330px)**
    - Age slider (5-35 years)
@@ -117,29 +136,80 @@ The application uses a three-column grid layout:
 
 ## Features
 
+### Real-Time Streaming
+
+**How It Works:**
+- Uses Server-Sent Events (SSE) to receive AI responses
+- Text appears character-by-character as AI generates it
+- Blinking cursor (▋) shows where content is being added
+- No waiting for full response before seeing results
+
+**Benefits:**
+- Immediate engagement
+- Feels more interactive and responsive
+- Can start reading before AI finishes
+
+### Voice Input
+
+**How to Use:**
+1. Click the microphone button (🎤)
+2. Speak your question or answer
+3. Button turns red and pulses while listening
+4. Click again to stop, or just press Enter/Send
+5. Text appears in input box automatically
+6. Review/edit if needed before sending
+
+**Browser Support:**
+- Chrome, Edge, Safari (Web Speech API required)
+- Graceful fallback message if unsupported
+
 ### Chat Management
 
 **Start New Chat**
 - Click "+ Start New Chat" button
 - Creates a fresh chat session
-- Previous chats are preserved
+- Previous chats are preserved in localStorage
+
+**Chat Persistence**
+- All chats saved to browser localStorage
+- 24-hour retention policy (configurable)
+- Automatic cleanup of expired chats
+- Chat state restored on page reload
 
 **Switch Between Chats**
 - Click any chat in the history
 - View full conversation
 - Continue from where you left off
 
+### Intelligent Conversation
+
+**Context-Aware Responses:**
+- Full conversation history sent with each request
+- AI automatically detects:
+  - New questions → Provides explanation
+  - Answers to AI questions → Provides feedback
+- Seamless follow-up questions supported
+
+**Answer Evaluation:**
+- When you answer an AI's question, it provides encouraging feedback
+- Acknowledges correct understanding
+- Gently corrects misconceptions
+- Builds on your knowledge
+
 ### Message Display
 
-Each AI response contains three sections:
+**For Topic Explanations:**
+1. **Explanation** (green border): Core concept
+2. **Example** (yellow border): Relatable scenario
+3. **Question** (blue border): Thought-provoking follow-up
 
-1. **Explanation**: Core concept explanation
-2. **Example**: Relatable example scenario
-3. **Question**: Thought-provoking follow-up question
+**For Answer Feedback:**
+1. **Feedback** (purple border): Encouraging evaluation of your answer
 
 ### Audio Playback
 
 - Auto-generated audio for each response
+- Wrapped in styled container with orange border
 - Only one audio plays at a time
 - Automatic pause of other players when starting new audio
 
@@ -148,6 +218,7 @@ Each AI response contains three sections:
 - Slider from 5 to 35 years
 - Adjusts complexity of explanations
 - Live indicator shows current age
+- Affects both question difficulty and answer feedback
 
 ### Topic Packs
 
@@ -164,42 +235,83 @@ Click a topic button to auto-fill the input field.
 
 ### Color Scheme
 
-- **Primary Blue**: `#2563eb` (buttons, accents)
+- **Primary Blue**: `#2563eb` (buttons, send icon, questions)
+- **Green**: `#10b981` (explanations)
+- **Yellow**: `#fbbf24` (examples)
+- **Purple**: `#8b5cf6` (feedback)
+- **Orange**: `#f97316` (audio)
+- **Red**: `#ef4444` (recording indicator)
 - **Background**: `#f9fafb` (sidebars), `#ffffff` (main)
 - **Borders**: `#e5e7eb`
 - **Text**: `#111827` (primary), `#6b7280` (secondary)
-- **Hover**: `#f3f4f6`, `#1d4ed8`
+
+### Section Styling
+
+All assistant sections share:
+- Left border (3px, color-coded)
+- Light gray background (`#f3f4f6`)
+- Rounded corners (6px)
+- Padding and margins for spacing
+- Text wrapping for long content
 
 ### Typography
 
 - **Font Family**: Inter (Google Fonts)
 - **Weights**: 400, 500, 600, 700
+- **Line Height**: 1.5-1.6 for readability
 - **Fallbacks**: System sans-serif fonts
 
 ### Key CSS Classes
 
 ```css
-.app                    # Main grid container
-.sidebar               # Left/right sidebars
-.chat                  # Center chat container
-.messages              # Scrollable message area
-.input-box             # Fixed input area
-.chat-item             # Chat history items
-.new-chat-btn          # New chat button
-.assistant-section     # AI response sections
+.app                       # Main grid container
+.sidebar                   # Left/right sidebars
+.chat                      # Center chat container
+.messages                  # Scrollable message area
+.input-box                 # Fixed input area with textarea
+.textarea-container        # Relative container for buttons
+.mic-button                # Voice input button
+.mic-button.listening      # Active recording state
+.send-icon                 # Send button
+.chat-item                 # Chat history items with ellipsis
+.new-chat-btn              # New chat button
+.assistant-section         # Base AI response section
+.assistant-section.explanation  # Green border
+.assistant-section.example      # Yellow border
+.assistant-section.question     # Blue border
+.assistant-section.feedback     # Purple border
+.assistant-section.audio        # Orange border
+.cursor                    # Blinking streaming cursor
+.msg.user                  # User messages with gray background
 ```
 
 ## API Integration
 
 ### Endpoints Used
 
-**POST /explain**
+**POST /explain/stream** (Primary)
 ```javascript
-fetch("http://localhost:8000/explain", {
+const res = await fetch("http://localhost:8000/explain/stream", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ topic: text, age })
-})
+  body: JSON.stringify({ 
+    topic: text, 
+    age,
+    context: conversationHistory  // Full chat context
+  })
+});
+
+// Server-Sent Events streaming
+const reader = res.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  
+  const chunk = decoder.decode(value);
+  // Parse SSE data and update UI in real-time
+}
 ```
 
 **GET /topics**
@@ -218,14 +330,27 @@ fetch("http://localhost:8000/topics")
 
 1. Click "+ Start New Chat" or type directly
 2. Enter a topic or select from topic packs
-3. Adjust age level if needed
-4. Press Enter or click "Send"
-5. View explanation with example and question
-6. Listen to audio narration (optional)
+3. **OR** Click microphone button and speak your question
+4. Adjust age level if needed
+5. Press Enter or click "Send"
+6. Watch explanation stream in real-time
+7. View example and question as they appear
+8. Listen to audio narration (optional)
+
+### Answering AI Questions
+
+1. After receiving a question from AI
+2. Type your answer (or use voice input)
+3. Press Enter or click "Send"
+4. AI automatically detects it's an answer
+5. Receive encouraging feedback in real-time
 
 ### Continuing a Conversation
 
-1. Type follow-up question
+1. Type follow-up question (related or new topic)
+2. AI maintains context from previous messages
+3. Receive contextually-aware explanation
+4. Conversation flows naturally
 2. Press Enter or click "Send"
 3. New response appended to chat
 4. Auto-scrolls to latest message

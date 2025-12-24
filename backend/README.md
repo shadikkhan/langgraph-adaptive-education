@@ -1,24 +1,35 @@
 # Explain Like I'm 10 - Backend API
 
-This is the backend API for the "Explain Like I'm 10" application, which generates age-appropriate explanations using LangGraph and Ollama LLM.
+This is the backend API for the "Explain Like I'm 10" application, which generates age-appropriate explanations using LangGraph and Ollama LLM with real-time streaming support.
 
 ## Architecture
 
 The backend is built with:
-- **FastAPI**: Web framework for building the API
-- **LangGraph**: Workflow orchestration for generating explanations
+- **FastAPI**: Web framework with async support and Server-Sent Events (SSE)
+- **LangGraph**: Workflow orchestration for generating explanations with intelligent routing
 - **Ollama**: Local LLM (llama3.1:8b) for generating content
 - **gTTS**: Google Text-to-Speech for audio generation
+- **Streaming AI**: Real-time response generation using `astream()` 
+
+## Key Features
+
+- ✨ **Real-time Streaming**: AI responses stream token-by-token for immediate user feedback
+- 🧠 **Intelligent Routing**: Automatically detects if user is answering a question or asking a new one
+- 💬 **Context-Aware**: Maintains full conversation history for coherent responses
+- 📝 **Answer Evaluation**: Provides encouraging feedback when users answer AI questions
+- 🎯 **Age-Adaptive**: Content tailored to user's age (5-35 years)
+- 🔊 **Audio Generation**: Text-to-speech for all responses
+- 🛡️ **Content Safety**: Multi-stage validation for age-appropriate content
 
 ## Project Structure
 
 ```
 backend/
 ├── main.py              # FastAPI application entry point
-├── routes.py            # API route handlers
-├── graph.py             # LangGraph workflow definitions
+├── routes.py            # API route handlers with SSE streaming
+├── graph.py             # LangGraph workflow with context-aware routing
 ├── models.py            # Pydantic models for request/response
-├── config.py            # Configuration settings
+├── config.py            # Configuration settings and LLM initialization
 ├── tts.py               # Text-to-speech functionality
 ├── topic_packs.py       # Pre-defined topic categories
 └── audio/               # Generated audio files directory
@@ -204,9 +215,44 @@ The API will be available at `http://localhost:8000`
 
 ## API Endpoints
 
+### POST /explain/stream
+
+Generate an age-appropriate explanation with real-time streaming (recommended).
+
+**Request Body:**
+```json
+{
+  "topic": "Plants",
+  "age": 10,
+  "context": "Previous conversation history (optional)"
+}
+```
+
+**Response:** Server-Sent Events (SSE) stream
+
+**Event Types:**
+```javascript
+// Section start
+{ "type": "section", "section": "Explanation" }
+
+// Content chunk (streamed in real-time)
+{ "type": "content", "section": "Explanation", "text": "Plants are " }
+{ "type": "content", "section": "Explanation", "text": "amazing " }
+
+// Audio ready
+{ "type": "audio", "url": "/audio/1234567890.mp3" }
+
+// Stream complete
+{ "type": "done" }
+```
+
+**Intelligent Routing:**
+- If `context` contains a question and `topic` is short (< 15 words) without question indicators → Returns **Feedback** section
+- Otherwise → Returns **Explanation**, **Example**, **Question** sections
+
 ### POST /explain
 
-Generate an age-appropriate explanation for a topic.
+Generate explanation (non-streaming, legacy).
 
 **Request Body:**
 ```json
@@ -248,12 +294,23 @@ Stream an audio file.
 
 ## LangGraph Workflow
 
-The explanation generation follows this workflow:
+The explanation generation follows an intelligent workflow:
 
-1. **Simplify Node**: Generates age-appropriate explanation
-2. **Add Example Node**: Creates a relatable example
-3. **Think Question Node**: Generates a thought-provoking question
-4. **Safety Check Node**: Ensures content is safe and appropriate
+### For New Questions:
+1. **Simplify Node**: Generates age-appropriate explanation (streaming)
+2. **Add Example Node**: Creates a relatable example (streaming)
+3. **Safety Check Node**: Ensures content is safe and appropriate
+4. **Think Question Node**: Generates a thought-provoking question (streaming)
+
+### For Answers (detected via context):
+1. **Context Analysis**: Detects if user is answering a previous question
+2. **Feedback Node**: Provides encouraging, personalized feedback (streaming)
+
+**Answer Detection Logic:**
+- Checks conversation `context` for previous questions
+- Analyzes input for question indicators: `?`, `what`, `how`, `why`, etc.
+- If input is short (<15 words) AND lacks question indicators → treats as answer
+- Otherwise → treats as new question
 
 ## Configuration
 
