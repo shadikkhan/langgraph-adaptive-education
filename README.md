@@ -356,5 +356,9 @@ MIT License - Feel free to use this project as a reference or starting point for
 
 ## UI Screens:
 
+![Screen 1](screens/chat-1-1.png)
 
+![Screen 2](screens/chat-1-2.png)
+
+![Screen 3](screens/chat-2-1.png)
 
