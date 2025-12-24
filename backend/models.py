@@ -9,6 +9,7 @@ class ExplainRequest(BaseModel):
     """Request model for the /explain endpoint"""
     topic: str
     age: int
+    context: str = ""  # Conversation history
 
 
 class ExplainState(TypedDict):
