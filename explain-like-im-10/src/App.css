@@ -1,0 +1,43 @@
+/* App-specific styles - index.css has main layout */
+
+.assistant-section.example {
+  background: #eff6ff;
+  padding: 8px;
+  border-radius: 6px;
+  margin: 6px 0;
+}
+
+.assistant-section.question {
+  border-left: 3px solid #2563eb;
+  padding-left: 8px;
+  margin: 6px 0;
+}
+
+.message-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.5;
+}
+
+.msg.assistant::before {
+  content: "Assistant";
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.msg.user::before {
+  content: "You";
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+audio {
+  height: 32px;
+}
