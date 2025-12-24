@@ -1,0 +1,6 @@
+fastapi==0.115.0
+uvicorn==0.32.0
+pydantic==2.9.0
+langgraph==0.2.45
+langchain-ollama==0.2.0
+gtts==2.5.3
