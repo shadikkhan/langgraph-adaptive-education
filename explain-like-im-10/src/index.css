@@ -66,6 +66,9 @@ html, body, #root {
   background: transparent;
   border: none;
   font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chat-item:hover {
@@ -102,11 +105,6 @@ html, body, #root {
   white-space: pre-wrap;
 }
 
-.msg.user {
-  align-self: flex-end;
-  text-align: right;
-}
-
 .msg.assistant {
   align-self: flex-start;
   text-align: left;
@@ -116,37 +114,61 @@ html, body, #root {
 .input-box {
   display: flex;
   gap: 10px;
-  padding: 14px;
+  padding: 14px 15%;
   border-top: 1px solid #e5e7eb;
   background: #ffffff;
   flex-shrink: 0;
+  align-items: flex-end;
 }
 
-.input-box input {
+.textarea-container {
   flex: 1;
-  padding: 12px 14px;
+  position: relative;
+}
+
+.input-box textarea {
+  width: 100%;
+  padding: 12px 50px 12px 14px;
   font-size: 15px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
+  resize: none;
+  min-height: 44px;
+  max-height: 120px;
+  font-family: inherit;
+  line-height: 1.5;
+  overflow-y: auto;
 }
 
-.input-box input:focus {
+.input-box textarea:focus {
   outline: none;
   border-color: #2563eb;
 }
 
-.input-box button {
-  padding: 12px 18px;
-  font-size: 14px;
-  border-radius: 8px;
+.send-icon {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
   border: none;
   background: #2563eb;
   color: white;
+  font-size: 16px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
 }
 
-.input-box button:hover {
+.send-icon:hover {
   background: #1d4ed8;
+}
+
+.send-icon:active {
+  transform: scale(0.95);
 }
 
 /* ---------------- RIGHT SIDEBAR CONTROLS ---------------- */

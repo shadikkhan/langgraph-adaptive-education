@@ -2,10 +2,11 @@
 API route handlers
 """
 import os
+import json
 from fastapi import APIRouter, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from models import ExplainRequest
-from graph import explain_graph
+from graph import explain_graph, stream_explain_graph
 from tts import text_to_speech
 from topic_packs import TOPIC_PACKS
 from config import AUDIO_DIR
@@ -41,6 +42,51 @@ def explain(req: ExplainRequest):
         "sections": display_sections,
         "audio_url": f"/audio/{os.path.basename(audio_path)}"
     }
+
+
+@router.post("/explain/stream")
+async def explain_stream(req: ExplainRequest):
+    """Stream age-appropriate explanation in real-time"""
+    async def event_generator():
+        accumulated_text = {
+            "Explanation": "",
+            "Example": "",
+            "Question": ""
+        }
+        
+        async for chunk in stream_explain_graph(req.topic, req.age):
+            yield f"data: {json.dumps(chunk)}\n\n"
+            
+            # Accumulate text for audio generation
+            if chunk.get("type") == "content":
+                section = chunk.get("section", "")
+                text = chunk.get("text", "")
+                if section in accumulated_text:
+                    accumulated_text[section] += text
+        
+        # Generate audio after all content is streamed
+        sections_text = "\n\n".join([f"{label}: {text}" for label, text in accumulated_text.items() if text])
+        audio_path = text_to_speech(sections_text)
+        
+        # Send final audio URL
+        audio_chunk = {
+            "type": "audio",
+            "url": f"/audio/{os.path.basename(audio_path)}"
+        }
+        yield f"data: {json.dumps(audio_chunk)}\n\n"
+        
+        # Send completion signal
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+        }
+    )
 
 
 @router.get("/topics")
