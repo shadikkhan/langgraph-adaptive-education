@@ -1,16 +1,43 @@
 /* App-specific styles - index.css has main layout */
 
+.assistant-section {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.6;
+}
+
+.assistant-section.explanation {
+  border-left: 3px solid #10b981;
+  padding: 8px;
+  margin: 6px 0;
+  background: #fdfeff;
+  border-radius: 6px;
+}
+
 .assistant-section.example {
-  background: #eff6ff;
+  border-left: 3px solid #fbbf24;
   padding: 8px;
   border-radius: 6px;
   margin: 6px 0;
+  background: #fdfeff;
 }
 
 .assistant-section.question {
   border-left: 3px solid #2563eb;
   padding-left: 8px;
   margin: 6px 0;
+  background: #fdfeff;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.assistant-section.audio {
+  border-left: 3px solid #f97316;
+  padding: 8px;
+  border-radius: 6px;
+  margin: 6px 0;
+  background: #fdfeff;
 }
 
 .message-text {
@@ -29,6 +56,15 @@
   margin-bottom: 4px;
 }
 
+.msg.user {
+  background: #f4f7ff;
+  padding: 12px;
+  border-radius: 8px;
+  margin-left: 20%;
+  align-self: flex-end;
+  text-align: right;
+}
+
 .msg.user::before {
   content: "You";
   display: block;
@@ -38,6 +74,33 @@
   margin-bottom: 4px;
 }
 
+.msg.user .message-text {
+  margin: 0;
+  padding: 0;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  text-align: left;
+  line-height: 1.5;
+}
+
 audio {
   height: 32px;
+}
+
+/* Streaming cursor animation */
+.cursor {
+  display: inline-block;
+  margin-left: 4px;
+  animation: blink 1s infinite;
+  color: #2563eb;
+}
+
+@keyframes blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
 }

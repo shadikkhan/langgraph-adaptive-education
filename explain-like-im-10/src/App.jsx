@@ -17,6 +17,7 @@ export default function App() {
   const [packs, setPacks] = useState({});
   const [selectedPack, setSelectedPack] = useState("");
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const activeChat = chats.find(c => c.id === activeChatId);
 
@@ -137,6 +138,14 @@ export default function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeChat?.messages]);
 
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [input]);
+
   // Function to pause all other audio players
   const handleAudioPlay = (e) => {
     const allAudios = document.querySelectorAll('audio');
@@ -182,35 +191,160 @@ export default function App() {
       );
     }
     setInput("");
+    
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+
+    // Add placeholder assistant message that will be updated with streaming data
+    const assistantMsgIndex = activeChat ? activeChat.messages.length + 1 : 1;
+    setChats(prev =>
+      prev.map(c =>
+        c.id === chatId
+          ? {
+              ...c,
+              messages: [
+                ...c.messages,
+                {
+                  role: "assistant",
+                  sections: { Explanation: "", Example: "", Question: "" },
+                  audio_url: null,
+                  streaming: true
+                }
+              ]
+            }
+          : c
+      )
+    );
 
     try {
-      const res = await fetch("http://localhost:8000/explain", {
+      const res = await fetch("http://localhost:8000/explain/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: text, age })
       });
 
-      const data = await res.json();
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let currentSection = "";
 
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === "section") {
+                currentSection = data.section;
+              } else if (data.type === "content") {
+                const section = data.section;
+                const text = data.text;
+                
+                setChats(prev =>
+                  prev.map(c =>
+                    c.id === chatId
+                      ? {
+                          ...c,
+                          messages: c.messages.map((msg, idx) =>
+                            idx === assistantMsgIndex && msg.streaming
+                              ? {
+                                  ...msg,
+                                  sections: {
+                                    ...msg.sections,
+                                    [section]: (msg.sections[section] || "") + text
+                                  }
+                                }
+                              : msg
+                          )
+                        }
+                      : c
+                  )
+                );
+              } else if (data.type === "update") {
+                const section = data.section;
+                const text = data.text;
+                
+                setChats(prev =>
+                  prev.map(c =>
+                    c.id === chatId
+                      ? {
+                          ...c,
+                          messages: c.messages.map((msg, idx) =>
+                            idx === assistantMsgIndex && msg.streaming
+                              ? {
+                                  ...msg,
+                                  sections: {
+                                    ...msg.sections,
+                                    [section]: text
+                                  }
+                                }
+                              : msg
+                          )
+                        }
+                      : c
+                  )
+                );
+              } else if (data.type === "audio") {
+                setChats(prev =>
+                  prev.map(c =>
+                    c.id === chatId
+                      ? {
+                          ...c,
+                          messages: c.messages.map((msg, idx) =>
+                            idx === assistantMsgIndex && msg.streaming
+                              ? { ...msg, audio_url: data.url }
+                              : msg
+                          )
+                        }
+                      : c
+                  )
+                );
+              } else if (data.type === "done") {
+                setChats(prev =>
+                  prev.map(c =>
+                    c.id === chatId
+                      ? {
+                          ...c,
+                          messages: c.messages.map((msg, idx) =>
+                            idx === assistantMsgIndex && msg.streaming
+                              ? { ...msg, streaming: false }
+                              : msg
+                          )
+                        }
+                      : c
+                  )
+                );
+              }
+            } catch (e) {
+              console.error("Error parsing SSE data:", e);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching explanation:", error);
+      // Remove streaming flag on error
       setChats(prev =>
         prev.map(c =>
           c.id === chatId
             ? {
                 ...c,
-                messages: [
-                  ...c.messages,
-                  {
-                    role: "assistant",
-                    sections: data.sections || {}, // store sections as object
-                    audio_url: data.audio_url
-                  }
-                ]
+                messages: c.messages.map((msg, idx) =>
+                  idx === assistantMsgIndex && msg.streaming
+                    ? { ...msg, streaming: false, error: true }
+                    : msg
+                )
               }
             : c
         )
       );
-    } catch (error) {
-      console.error("Error fetching explanation:", error);
     }
   }
 
@@ -243,12 +377,15 @@ export default function App() {
                   <>
                     <div className="assistant-section explanation" style={{ marginBottom: "16px" }}>
                       <strong>Explanation:</strong> {m.sections.Explanation}
+                      {m.streaming && !m.sections.Explanation && <span className="cursor">▋</span>}
                     </div>
                     <div className="assistant-section example" style={{ marginBottom: "16px" }}>
                       <strong>Example:</strong> {m.sections.Example}
+                      {m.streaming && m.sections.Explanation && !m.sections.Example && <span className="cursor">▋</span>}
                     </div>
                     <div className="assistant-section question" style={{ marginBottom: "16px" }}>
                       <strong>Question:</strong> {m.sections.Question}
+                      {m.streaming && m.sections.Example && !m.sections.Question && <span className="cursor">▋</span>}
                     </div>
                   </>
                 ) : (
@@ -256,12 +393,14 @@ export default function App() {
                 )}
 
                 {m.audio_url && (
-                  <audio
-                    controls
-                    src={`http://localhost:8000${m.audio_url}`}
-                    style={{ marginTop: "16px", width: "100%" }}
-                    onPlay={handleAudioPlay}
-                  />
+                  <div className="assistant-section audio" style={{ marginBottom: "16px", marginTop: "16px" }}>
+                    <audio
+                      controls
+                      src={`http://localhost:8000${m.audio_url}`}
+                      style={{ width: "100%" }}
+                      onPlay={handleAudioPlay}
+                    />
+                  </div>
                 )}
               </div>
             ))
@@ -273,13 +412,24 @@ export default function App() {
 
         {/* INPUT BOX */}
         <div className="input-box">
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="Ask a topic..."
-            onKeyDown={e => e.key === "Enter" && send()}
-          />
-          <button onClick={send}>Send</button>
+          <div className="textarea-container">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder="Ask a topic..."
+              onKeyDown={e => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              rows={1}
+            />
+            <button className="send-icon" onClick={send} title="Send message">
+              ➤
+            </button>
+          </div>
         </div>
       </main>
 
