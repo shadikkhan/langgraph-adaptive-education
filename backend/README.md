@@ -1,12 +1,12 @@
 # Explain Like I'm 10 - Backend API
 
-This is the backend API for the "Explain Like I'm 10" application, which generates age-appropriate explanations using LangGraph and Ollama LLM with real-time streaming support.
+This is the backend API for the "Explain Like I'm 10" application, which generates age-appropriate explanations using LangGraph and Ollama LLM with real-time streaming support, intent inference, and interactive quiz generation.
 
 ## Architecture
 
 The backend is built with:
 - **FastAPI**: Web framework with async support and Server-Sent Events (SSE)
-- **LangGraph**: Workflow orchestration for generating explanations with intelligent routing
+- **LangGraph**: Workflow orchestration with intelligent intent-based routing
 - **Ollama**: Local LLM (llama3.1:8b) for generating content
 - **gTTS**: Google Text-to-Speech for audio generation
 - **Streaming AI**: Real-time response generation using `astream()` 
@@ -14,12 +14,14 @@ The backend is built with:
 ## Key Features
 
 - ✨ **Real-time Streaming**: AI responses stream token-by-token for immediate user feedback
-- 🧠 **Intelligent Routing**: Automatically detects if user is answering a question or asking a new one
+- 🧠 **Intent Inference**: LLM-powered classification of user input (new question, answer, or follow-up)
+- 🎯 **Quiz Mode**: Generate and evaluate multiple-choice quizzes with difficulty levels
 - 💬 **Context-Aware**: Maintains full conversation history for coherent responses
 - 📝 **Answer Evaluation**: Provides encouraging feedback when users answer AI questions
-- 🎯 **Age-Adaptive**: Content tailored to user's age (5-35 years)
+- 🎚️ **Adaptive Difficulty**: Content tailored to user's age (5-35 years)
 - 🔊 **Audio Generation**: Text-to-speech for all responses
 - 🛡️ **Content Safety**: Multi-stage validation for age-appropriate content
+- 🔄 **Conditional Routing**: Dynamic workflow paths based on conversation context
 
 ## Project Structure
 
@@ -27,11 +29,12 @@ The backend is built with:
 backend/
 ├── main.py              # FastAPI application entry point
 ├── routes.py            # API route handlers with SSE streaming
-├── graph.py             # LangGraph workflow with context-aware routing
-├── models.py            # Pydantic models for request/response
+├── graph.py             # LangGraph workflow with intent inference
+├── models.py            # Pydantic models (ExplainRequest, QuizRequest, etc.)
 ├── config.py            # Configuration settings and LLM initialization
 ├── tts.py               # Text-to-speech functionality
 ├── topic_packs.py       # Pre-defined topic categories
+├── requirements.txt     # Python dependencies
 └── audio/               # Generated audio files directory
 ```
 
@@ -217,14 +220,15 @@ The API will be available at `http://localhost:8000`
 
 ### POST /explain/stream
 
-Generate an age-appropriate explanation with real-time streaming (recommended).
+Generate an age-appropriate explanation with real-time streaming and intent inference.
 
 **Request Body:**
 ```json
 {
   "topic": "Plants",
   "age": 10,
-  "context": "Previous conversation history (optional)"
+  "context": "Previous conversation history (optional)",
+  "mode": "explain"
 }
 ```
 
@@ -232,6 +236,9 @@ Generate an age-appropriate explanation with real-time streaming (recommended).
 
 **Event Types:**
 ```javascript
+// Intent inference result
+{ "type": "intent", "intent": "new_question" }  // or "answer" or "followup"
+
 // Section start
 { "type": "section", "section": "Explanation" }
 
@@ -239,11 +246,85 @@ Generate an age-appropriate explanation with real-time streaming (recommended).
 { "type": "content", "section": "Explanation", "text": "Plants are " }
 { "type": "content", "section": "Explanation", "text": "amazing " }
 
+// For answer evaluation
+{ "type": "section", "section": "Feedback" }
+{ "type": "content", "section": "Feedback", "text": "Great answer! " }
+
 // Audio ready
 { "type": "audio", "url": "/audio/1234567890.mp3" }
 
 // Stream complete
 { "type": "done" }
+```
+
+**Example with curl:**
+```bash
+curl -N -X POST http://localhost:8000/explain/stream \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "photosynthesis", "age": 12, "context": ""}'
+```
+
+### POST /quiz/generate
+
+Generate a multiple-choice quiz on any topic.
+
+**Request Body:**
+```json
+{
+  "topic": "Solar System",
+  "age": 12,
+  "num_questions": 5,
+  "difficulty": "medium"
+}
+```
+
+**Parameters:**
+- `topic` (string, required): The subject for quiz questions
+- `age` (int, required): User's age for appropriate difficulty
+- `num_questions` (int, optional): Number of questions (default: 5)
+- `difficulty` (string, optional): "easy", "medium", or "hard" (default: "medium")
+
+**Response:**
+```json
+{
+  "questions": [
+    {
+      "question": "How many planets are in our solar system?",
+      "options": {
+        "A": "8 planets",
+        "B": "9 planets",
+        "C": "7 planets",
+        "D": "10 planets"
+      },
+      "correct": "A",
+      "explanation": "There are 8 planets since Pluto was reclassified as a dwarf planet in 2006."
+    }
+  ],
+  "topic": "Solar System"
+}
+```
+
+### POST /quiz/evaluate
+
+Evaluate a quiz answer with encouraging feedback.
+
+**Request Body:**
+```json
+{
+  "question": "How many planets are in our solar system?",
+  "correct_answer": "A",
+  "user_answer": "B",
+  "age": 12
+}
+```
+
+**Response:**
+```json
+{
+  "is_correct": false,
+  "feedback": "Not quite, but good try! The correct answer is A. There are 8 planets in our solar system.",
+  "explanation": "Pluto was reclassified as a dwarf planet in 2006, leaving 8 major planets."
+}
 ```
 
 **Intelligent Routing:**
