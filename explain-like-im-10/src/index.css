@@ -113,12 +113,12 @@ html, body, #root {
 /* Input area */
 .input-box {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 0;
   padding: 14px 15%;
   border-top: 1px solid #e5e7eb;
   background: #ffffff;
   flex-shrink: 0;
-  align-items: flex-end;
 }
 
 .textarea-container {
@@ -128,7 +128,7 @@ html, body, #root {
 
 .input-box textarea {
   width: 100%;
-  padding: 12px 50px 12px 14px;
+  padding: 12px 90px 12px 14px;
   font-size: 15px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
@@ -169,6 +169,45 @@ html, body, #root {
 
 .send-icon:active {
   transform: scale(0.95);
+}
+
+.mic-button {
+  position: absolute;
+  right: 50px;
+  bottom: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.mic-button:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.mic-button.listening {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* ---------------- RIGHT SIDEBAR CONTROLS ---------------- */

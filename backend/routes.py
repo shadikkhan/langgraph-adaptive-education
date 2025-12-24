@@ -51,10 +51,11 @@ async def explain_stream(req: ExplainRequest):
         accumulated_text = {
             "Explanation": "",
             "Example": "",
-            "Question": ""
+            "Question": "",
+            "Feedback": ""
         }
         
-        async for chunk in stream_explain_graph(req.topic, req.age):
+        async for chunk in stream_explain_graph(req.topic, req.age, req.context):
             yield f"data: {json.dumps(chunk)}\n\n"
             
             # Accumulate text for audio generation

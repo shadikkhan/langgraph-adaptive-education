@@ -16,8 +16,10 @@ export default function App() {
   const [age, setAge] = useState(10);
   const [packs, setPacks] = useState({});
   const [selectedPack, setSelectedPack] = useState("");
+  const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const recognitionRef = useRef(null);
 
   const activeChat = chats.find(c => c.id === activeChatId);
 
@@ -146,6 +148,62 @@ export default function App() {
     }
   }, [input]);
 
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' ';
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          setInput(prev => prev + finalTranscript);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert('Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
   // Function to pause all other audio players
   const handleAudioPlay = (e) => {
     const allAudios = document.querySelectorAll('audio');
@@ -166,6 +224,12 @@ export default function App() {
     const text = input.trim();
     if (!text) return;
 
+    // Stop listening if microphone is active
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+
     let chatId = activeChatId;
 
     if (!chatId) {
@@ -175,7 +239,7 @@ export default function App() {
           id: chatId,
           topic: text,
           age,
-          createdAt: Date.now(), // Add timestamp for expiration tracking
+          createdAt: Date.now(),
           messages: [{ role: "user", text }]
         },
         ...prev
@@ -208,7 +272,7 @@ export default function App() {
                 ...c.messages,
                 {
                   role: "assistant",
-                  sections: { Explanation: "", Example: "", Question: "" },
+                  sections: { Explanation: "", Example: "", Question: "", Feedback: "" },
                   audio_url: null,
                   streaming: true
                 }
@@ -219,10 +283,34 @@ export default function App() {
     );
 
     try {
-      const res = await fetch("http://localhost:8000/explain/stream", {
+      // Build conversation context from all previous messages
+      const conversationHistory = activeChat?.messages
+        .map(m => {
+          if (m.role === "user") {
+            return `User: ${m.text}`;
+          } else if (m.role === "assistant" && m.sections) {
+            const parts = [];
+            if (m.sections.Explanation) parts.push(`Explanation: ${m.sections.Explanation}`);
+            if (m.sections.Example) parts.push(`Example: ${m.sections.Example}`);
+            if (m.sections.Question) parts.push(`Question: ${m.sections.Question}`);
+            if (m.sections.Feedback) parts.push(`Feedback: ${m.sections.Feedback}`);
+            return parts.join("\n");
+          }
+          return "";
+        })
+        .filter(m => m)
+        .join("\n\n");
+
+      const requestBody = { 
+        topic: text, 
+        age,
+        context: conversationHistory || ""
+      };
+
+      const res = await fetch(`http://localhost:8000/explain/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: text, age })
+        body: JSON.stringify(requestBody)
       });
 
       const reader = res.body.getReader();
@@ -375,21 +463,34 @@ export default function App() {
               <div key={i} className={`msg ${m.role}`}>
                 {m.role === "assistant" && m.sections ? (
                   <>
-                    <div className="assistant-section explanation" style={{ marginBottom: "16px" }}>
-                      <strong>Explanation:</strong> {m.sections.Explanation}
-                      {m.streaming && !m.sections.Explanation && <span className="cursor">▋</span>}
-                    </div>
-                    <div className="assistant-section example" style={{ marginBottom: "16px" }}>
-                      <strong>Example:</strong> {m.sections.Example}
-                      {m.streaming && m.sections.Explanation && !m.sections.Example && <span className="cursor">▋</span>}
-                    </div>
-                    <div className="assistant-section question" style={{ marginBottom: "16px" }}>
-                      <strong>Question:</strong> {m.sections.Question}
-                      {m.streaming && m.sections.Example && !m.sections.Question && <span className="cursor">▋</span>}
-                    </div>
-                  </>
+                    {m.sections.Feedback ? (
+                      // Only show Feedback section if this is an answer evaluation
+                      <div className="assistant-section feedback" style={{ marginBottom: "16px" }}>
+                        <strong>Feedback:</strong> {m.sections.Feedback}
+                        {m.streaming && <span className="cursor">▋</span>}
+                      </div>
+                    ) : (
+                      // Show Explanation, Example, Question for topic explanations
+                      <>
+                        <div className="assistant-section explanation" style={{ marginBottom: "16px" }}>
+                          <strong>Explanation:</strong> {m.sections.Explanation}
+                          {m.streaming && !m.sections.Explanation && <span className="cursor">▋</span>}
+                        </div>
+                        <div className="assistant-section example" style={{ marginBottom: "16px" }}>
+                          <strong>Example:</strong> {m.sections.Example}
+                          {m.streaming && m.sections.Explanation && !m.sections.Example && <span className="cursor">▋</span>}
+                        </div>
+                        <div className="assistant-section question" style={{ marginBottom: "16px" }}>
+                          <strong>Question:</strong> {m.sections.Question}
+                          {m.streaming && m.sections.Example && !m.sections.Question && <span className="cursor">▋</span>}
+                        </div>
+                      </>
+                    )}                  </>
                 ) : (
-                  <div className="message-text">{m.text}</div>
+                  <div className="message-text">
+                    {m.isAnswer && <span className="answer-badge">Answer:</span>}
+                    {m.text}
+                  </div>
                 )}
 
                 {m.audio_url && (
@@ -417,7 +518,7 @@ export default function App() {
               ref={textareaRef}
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Ask a topic..."
+              placeholder="Ask a question or answer the previous one..."
               onKeyDown={e => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -426,6 +527,13 @@ export default function App() {
               }}
               rows={1}
             />
+            <button 
+              className={`mic-button ${isListening ? 'listening' : ''}`}
+              onClick={toggleListening}
+              title={isListening ? "Stop recording" : "Start voice input"}
+            >
+              {isListening ? '⏹' : '🎤'}
+            </button>
             <button className="send-icon" onClick={send} title="Send message">
               ➤
             </button>

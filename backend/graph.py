@@ -122,10 +122,56 @@ explain_graph = build_explain_graph()
 # -----------------------------
 # STREAMING FUNCTION
 # -----------------------------
-async def stream_explain_graph(topic: str, age: int):
+async def stream_explain_graph(topic: str, age: int, context: str = ""):
     """Stream the explanation generation process in real-time"""
     import re
     
+    # Improved detection: check if this is an answer to a previous question
+    is_answer = False
+    if context and "Question:" in context:
+        # Check if the input looks like an answer vs a question
+        # Questions typically contain: question words, question marks, "what/how/why/when/where/who"
+        question_indicators = ['?', 'what', 'how', 'why', 'when', 'where', 'who', 'which', 'explain', 'tell me']
+        topic_lower = topic.lower()
+        
+        # If it has question indicators, it's likely a new question
+        has_question_indicator = any(indicator in topic_lower for indicator in question_indicators)
+        
+        # If it's short (under 15 words) AND doesn't have question indicators, likely an answer
+        is_short = len(topic.split()) < 15
+        
+        if is_short and not has_question_indicator:
+            is_answer = True
+    
+    if is_answer:
+        # Provide feedback on the answer
+        yield {"type": "section", "section": "Feedback"}
+        
+        feedback_prompt = f"""
+You are a helpful teacher evaluating a student's answer.
+
+Student's age: {age}
+Previous conversation:
+{context}
+
+Student's latest response: {topic}
+
+Provide encouraging feedback:
+- Acknowledge what they got right
+- Gently correct any misconceptions
+- Build on their understanding
+- Keep it age-appropriate for {age} years old
+- Be positive and encouraging
+
+Keep your response conversational and friendly.
+"""
+        
+        async for chunk in llm.astream(feedback_prompt):
+            text = str(chunk)
+            yield {"type": "content", "section": "Feedback", "text": text}
+        return  # Exit early for answer feedback
+    
+    # Provide topic explanation
     # Step 1: Simplify
     yield {"type": "section", "section": "Explanation"}
     
