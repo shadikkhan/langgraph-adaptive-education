@@ -17,11 +17,7 @@ export default function App() {
   const [packs, setPacks] = useState({});
   const [selectedPack, setSelectedPack] = useState("");
   const [isListening, setIsListening] = useState(false);
-  const [mode, setMode] = useState("explain"); // "explain" or "quiz"
-  const [quizState, setQuizState] = useState(null); // { questions: [], currentIndex: 0, score: 0 }
   const [quizDifficulty, setQuizDifficulty] = useState("medium"); // "easy", "medium", "hard"
-  const [showQuizSetup, setShowQuizSetup] = useState(false); // Show quiz setup UI
-  const [quizTopic, setQuizTopic] = useState(""); // Topic for quiz
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false); // Loading state for quiz generation
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -165,15 +161,12 @@ export default function App() {
       recognition.lang = 'en-US';
 
       recognition.onresult = (event) => {
-        let interimTranscript = '';
         let finalTranscript = '';
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript + ' ';
-          } else {
-            interimTranscript += transcript;
           }
         }
 
@@ -224,23 +217,31 @@ export default function App() {
   const startNewChat = () => {
     setActiveChatId(null);
     setInput("");
-    setShowQuizSetup(false);
   };
 
-  // Function to show quiz setup UI
+  // Function to show quiz setup UI for current chat
   const showQuizSetupUI = () => {
-    console.log("showQuizSetupUI called");
-    // Pre-fill with current chat topic or input
-    const suggestedTopic = activeChat?.topic || input.trim() || "";
-    setQuizTopic(suggestedTopic);
-    setMode("quiz");
-    setShowQuizSetup(true);
-    console.log("Mode set to quiz, showQuizSetup set to true");
+    if (!activeChatId) {
+      alert("Please start a chat first!");
+      return;
+    }
+    setChats(prev =>
+      prev.map(c =>
+        c.id === activeChatId
+          ? { ...c, showQuizSetup: true, quizTopic: c.topic || "" }
+          : c
+      )
+    );
   };
 
   // Function to generate and start quiz
   const startQuiz = async () => {
-    if (!quizTopic.trim()) {
+    if (!activeChatId) return;
+    
+    const chat = chats.find(c => c.id === activeChatId);
+    const quizTopic = chat?.quizTopic?.trim();
+    
+    if (!quizTopic) {
       alert("Please enter a topic for the quiz!");
       return;
     }
@@ -251,7 +252,7 @@ export default function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: quizTopic.trim(),
+          topic: quizTopic,
           age,
           num_questions: 5,
           difficulty: quizDifficulty
@@ -261,15 +262,24 @@ export default function App() {
       const data = await res.json();
       
       if (data.questions) {
-        setQuizState({
-          topic: data.topic,
-          questions: data.questions,
-          currentIndex: 0,
-          score: 0,
-          answers: [],
-          showingFeedback: false
-        });
-        setShowQuizSetup(false);
+        setChats(prev =>
+          prev.map(c =>
+            c.id === activeChatId
+              ? {
+                  ...c,
+                  quizState: {
+                    topic: data.topic,
+                    questions: data.questions,
+                    currentIndex: 0,
+                    score: 0,
+                    answers: [],
+                    showingFeedback: false
+                  },
+                  showQuizSetup: false
+                }
+              : c
+          )
+        );
       } else if (data.error) {
         alert(`Error: ${data.error}`);
       }
@@ -283,50 +293,69 @@ export default function App() {
 
   // Function to submit quiz answer
   const submitQuizAnswer = async (selectedOption) => {
-    if (!quizState) return;
+    if (!activeChatId) return;
     
-    const currentQuestion = quizState.questions[quizState.currentIndex];
-    const isCorrect = selectedOption === currentQuestion.correct;
-    
-    // Update quiz state with answer
-    const updatedAnswers = [...quizState.answers, {
-      question: currentQuestion.question,
-      userAnswer: selectedOption,
-      correctAnswer: currentQuestion.correct,
-      isCorrect,
-      explanation: currentQuestion.explanation
-    }];
-    
-    const newScore = isCorrect ? quizState.score + 1 : quizState.score;
-    
-    setQuizState({
-      ...quizState,
-      answers: updatedAnswers,
-      score: newScore,
-      showingFeedback: true,
-      currentIsCorrect: isCorrect
-    });
+    setChats(prev =>
+      prev.map(c => {
+        if (c.id !== activeChatId || !c.quizState) return c;
+        
+        const currentQuestion = c.quizState.questions[c.quizState.currentIndex];
+        const isCorrect = selectedOption === currentQuestion.correct;
+        
+        const updatedAnswers = [...c.quizState.answers, {
+          question: currentQuestion.question,
+          userAnswer: selectedOption,
+          correctAnswer: currentQuestion.correct,
+          isCorrect,
+          explanation: currentQuestion.explanation
+        }];
+        
+        const newScore = isCorrect ? c.quizState.score + 1 : c.quizState.score;
+        
+        return {
+          ...c,
+          quizState: {
+            ...c.quizState,
+            answers: updatedAnswers,
+            score: newScore,
+            showingFeedback: true,
+            currentIsCorrect: isCorrect
+          }
+        };
+      })
+    );
   };
 
   // Function to move to next question (manual control)
   const nextQuestion = () => {
-    if (!quizState) return;
+    if (!activeChatId) return;
     
-    if (quizState.currentIndex < quizState.questions.length - 1) {
-      setQuizState(prev => ({
-        ...prev,
-        currentIndex: prev.currentIndex + 1,
-        showingFeedback: false,
-        currentIsCorrect: null
-      }));
-    } else {
-      // Quiz completed
-      setQuizState(prev => ({
-        ...prev,
-        completed: true,
-        showingFeedback: false
-      }));
-    }
+    setChats(prev =>
+      prev.map(c => {
+        if (c.id !== activeChatId || !c.quizState) return c;
+        
+        if (c.quizState.currentIndex < c.quizState.questions.length - 1) {
+          return {
+            ...c,
+            quizState: {
+              ...c.quizState,
+              currentIndex: c.quizState.currentIndex + 1,
+              showingFeedback: false,
+              currentIsCorrect: null
+            }
+          };
+        } else {
+          return {
+            ...c,
+            quizState: {
+              ...c.quizState,
+              completed: true,
+              showingFeedback: false
+            }
+          };
+        }
+      })
+    );
   };
 
   async function send() {
@@ -424,7 +453,6 @@ export default function App() {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let currentSection = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -439,7 +467,7 @@ export default function App() {
               const data = JSON.parse(line.slice(6));
 
               if (data.type === "section") {
-                currentSection = data.section;
+                // Section marker - no action needed
               } else if (data.type === "content") {
                 const section = data.section;
                 const text = data.text;
@@ -552,26 +580,6 @@ export default function App() {
         <button className="new-chat-btn" onClick={startNewChat}>
           + Start New Chat
         </button>
-        <div className="mode-toggle" style={{ margin: "16px 0", padding: "8px" }}>
-          <button 
-            className={mode === "explain" ? "active" : ""}
-            onClick={() => {
-              setMode("explain");
-              setQuizState(null);
-              setShowQuizSetup(false);
-            }}
-            style={{ marginRight: "8px", padding: "8px 12px" }}
-          >
-            📚 Explain
-          </button>
-          <button 
-            className={mode === "quiz" ? "active" : ""}
-            onClick={showQuizSetupUI}
-            style={{ padding: "8px 12px" }}
-          >
-            🎯 Start Quiz
-          </button>
-        </div>
         <h3>Chats</h3>
         {chats.map(c => (
           <div
@@ -586,8 +594,7 @@ export default function App() {
 
       {/* CENTER CHAT */}
       <main className="chat">
-        {mode === "quiz" ? (
-          showQuizSetup ? (
+        {activeChat?.showQuizSetup ? (
             <div className="quiz-setup-container" style={{
             display: "flex",
             flexDirection: "column",
@@ -612,8 +619,14 @@ export default function App() {
                 </label>
                 <input
                   type="text"
-                  value={quizTopic}
-                  onChange={(e) => setQuizTopic(e.target.value)}
+                  value={activeChat?.quizTopic || ""}
+                  onChange={(e) => setChats(prev =>
+                    prev.map(c =>
+                      c.id === activeChatId
+                        ? { ...c, quizTopic: e.target.value }
+                        : c
+                    )
+                  )}
                   placeholder="Enter a topic (e.g., photosynthesis, planets, fractions)"
                   style={{
                     width: "100%",
@@ -691,8 +704,13 @@ export default function App() {
               <div style={{ display: "flex", gap: "12px" }}>
                 <button
                   onClick={() => {
-                    setMode("explain");
-                    setShowQuizSetup(false);
+                    setChats(prev =>
+                      prev.map(c =>
+                        c.id === activeChatId
+                          ? { ...c, showQuizSetup: false }
+                          : c
+                      )
+                    );
                   }}
                   disabled={isGeneratingQuiz}
                   style={{
@@ -711,15 +729,15 @@ export default function App() {
                 </button>
                 <button
                   onClick={startQuiz}
-                  disabled={!quizTopic.trim() || isGeneratingQuiz}
+                  disabled={!(activeChat?.quizTopic?.trim()) || isGeneratingQuiz}
                   style={{
                     flex: 2,
                     padding: "12px 24px",
-                    background: isGeneratingQuiz ? "#3b82f6" : (quizTopic.trim() ? "#007bff" : "#cbd5e0"),
+                    background: isGeneratingQuiz ? "#3b82f6" : (activeChat?.quizTopic?.trim() ? "#007bff" : "#cbd5e0"),
                     color: "white",
                     border: "none",
                     borderRadius: "8px",
-                    cursor: (!quizTopic.trim() || isGeneratingQuiz) ? "not-allowed" : "pointer",
+                    cursor: (!(activeChat?.quizTopic?.trim()) || isGeneratingQuiz) ? "not-allowed" : "pointer",
                     fontSize: "16px",
                     fontWeight: "600",
                     display: "flex",
@@ -747,31 +765,31 @@ export default function App() {
               </div>
             </div>
           </div>
-        ) : quizState ? (
+        ) : activeChat?.quizState ? (
           <div className="quiz-container">
-            {!quizState.completed ? (
+            {!activeChat.quizState.completed ? (
               <>
                 <div className="quiz-header">
-                  <h2>Quiz: {quizState.topic}</h2>
+                  <h2>Quiz: {activeChat.quizState.topic}</h2>
                   <div className="quiz-progress">
-                    Question {quizState.currentIndex + 1} of {quizState.questions.length}
-                    <span style={{ marginLeft: "16px" }}>Score: {quizState.score}/{quizState.currentIndex}</span>
+                    Question {activeChat.quizState.currentIndex + 1} of {activeChat.quizState.questions.length}
+                    <span style={{ marginLeft: "16px" }}>Score: {activeChat.quizState.score}/{activeChat.quizState.currentIndex}</span>
                   </div>
                 </div>
                 
                 <div className="quiz-question">
-                  <h3>{quizState.questions[quizState.currentIndex].question}</h3>
+                  <h3>{activeChat.quizState.questions[activeChat.quizState.currentIndex].question}</h3>
                   
                   <div className="quiz-options">
-                    {Object.entries(quizState.questions[quizState.currentIndex].options).map(([key, value]) => (
+                    {Object.entries(activeChat.quizState.questions[activeChat.quizState.currentIndex].options).map(([key, value]) => (
                       <button
                         key={key}
                         onClick={() => submitQuizAnswer(key)}
-                        disabled={quizState.showingFeedback}
+                        disabled={activeChat.quizState.showingFeedback}
                         className={`quiz-option ${
-                          quizState.showingFeedback && key === quizState.questions[quizState.currentIndex].correct
+                          activeChat.quizState.showingFeedback && key === activeChat.quizState.questions[activeChat.quizState.currentIndex].correct
                             ? 'correct'
-                            : quizState.showingFeedback && key === quizState.answers[quizState.answers.length - 1]?.userAnswer
+                            : activeChat.quizState.showingFeedback && key === activeChat.quizState.answers[activeChat.quizState.answers.length - 1]?.userAnswer
                             ? 'incorrect'
                             : ''
                         }`}
@@ -781,7 +799,7 @@ export default function App() {
                           border: "2px solid #ddd",
                           borderRadius: "8px",
                           background: "white",
-                          cursor: quizState.showingFeedback ? "not-allowed" : "pointer",
+                          cursor: activeChat.quizState.showingFeedback ? "not-allowed" : "pointer",
                           textAlign: "left",
                           width: "100%"
                         }}
@@ -791,18 +809,18 @@ export default function App() {
                     ))}
                   </div>
                   
-                  {quizState.showingFeedback && (
+                  {activeChat.quizState.showingFeedback && (
                     <>
-                      <div className={`quiz-feedback ${quizState.currentIsCorrect ? 'correct' : 'incorrect'}`}
+                      <div className={`quiz-feedback ${activeChat.quizState.currentIsCorrect ? 'correct' : 'incorrect'}`}
                            style={{
                              marginTop: "16px",
                              padding: "16px",
                              borderRadius: "8px",
-                             background: quizState.currentIsCorrect ? "#d4edda" : "#f8d7da",
-                             color: quizState.currentIsCorrect ? "#155724" : "#721c24"
+                             background: activeChat.quizState.currentIsCorrect ? "#d4edda" : "#f8d7da",
+                             color: activeChat.quizState.currentIsCorrect ? "#155724" : "#721c24"
                            }}>
-                        <strong>{quizState.currentIsCorrect ? "✓ Correct!" : "✗ Not quite!"}</strong>
-                        <p>{quizState.questions[quizState.currentIndex].explanation}</p>
+                        <strong>{activeChat.quizState.currentIsCorrect ? "✓ Correct!" : "✗ Not quite!"}</strong>
+                        <p>{activeChat.quizState.questions[activeChat.quizState.currentIndex].explanation}</p>
                       </div>
                       <button
                         onClick={nextQuestion}
@@ -818,7 +836,7 @@ export default function App() {
                           fontWeight: "600"
                         }}
                       >
-                        {quizState.currentIndex < quizState.questions.length - 1 ? "Next Question →" : "View Results"}
+                        {activeChat.quizState.currentIndex < activeChat.quizState.questions.length - 1 ? "Next Question →" : "View Results"}
                       </button>
                     </>
                   )}
@@ -828,14 +846,14 @@ export default function App() {
               <div className="quiz-results">
                 <h2>Quiz Complete! 🎉</h2>
                 <div className="final-score" style={{ fontSize: "2em", margin: "24px 0" }}>
-                  Score: {quizState.score}/{quizState.questions.length}
+                  Score: {activeChat.quizState.score}/{activeChat.quizState.questions.length}
                   <div style={{ fontSize: "0.5em", marginTop: "8px" }}>
-                    {Math.round((quizState.score / quizState.questions.length) * 100)}%
+                    {Math.round((activeChat.quizState.score / activeChat.quizState.questions.length) * 100)}%
                   </div>
                 </div>
                 
                 <h3>Review:</h3>
-                {quizState.answers.map((answer, i) => (
+                {activeChat.quizState.answers.map((answer, i) => (
                   <div key={i} className="review-item" style={{
                     padding: "16px",
                     margin: "12px 0",
@@ -851,9 +869,13 @@ export default function App() {
                 
                 <button 
                   onClick={() => {
-                    setQuizTopic(quizState.topic);
-                    setShowQuizSetup(true);
-                    setQuizState(null);
+                    setChats(prev =>
+                      prev.map(c =>
+                        c.id === activeChatId
+                          ? { ...c, quizTopic: activeChat.quizState.topic, showQuizSetup: true, quizState: null }
+                          : c
+                      )
+                    );
                   }}
                   style={{
                     padding: "12px 24px",
@@ -868,7 +890,15 @@ export default function App() {
                   Try Again
                 </button>
                 <button 
-                  onClick={() => { setMode("explain"); setQuizState(null); setShowQuizSetup(false); }}
+                  onClick={() => {
+                    setChats(prev =>
+                      prev.map(c =>
+                        c.id === activeChatId
+                          ? { ...c, quizState: null, showQuizSetup: false }
+                          : c
+                      )
+                    );
+                  }}
                   style={{
                     padding: "12px 24px",
                     marginTop: "16px",
@@ -886,17 +916,6 @@ export default function App() {
             )}
           </div>
         ) : (
-          <div style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            height: "100%",
-            color: "#6b7280"
-          }}>
-            <p>Please select a topic and configure your quiz settings above.</p>
-          </div>
-        )
-        ) : (
           <>
             <div className="messages">
               {activeChat ? (
@@ -913,18 +932,24 @@ export default function App() {
                     ) : (
                       // Show Explanation, Example, Question for topic explanations
                       <>
-                        <div className="assistant-section explanation" style={{ marginBottom: "16px" }}>
-                          <strong>Explanation:</strong> {m.sections.Explanation}
-                          {m.streaming && !m.sections.Explanation && <span className="cursor">▋</span>}
-                        </div>
-                        <div className="assistant-section example" style={{ marginBottom: "16px" }}>
-                          <strong>Example:</strong> {m.sections.Example}
-                          {m.streaming && m.sections.Explanation && !m.sections.Example && <span className="cursor">▋</span>}
-                        </div>
-                        <div className="assistant-section question" style={{ marginBottom: "16px" }}>
-                          <strong>Question:</strong> {m.sections.Question}
-                          {m.streaming && m.sections.Example && !m.sections.Question && <span className="cursor">▋</span>}
-                        </div>
+                        {(m.sections.Explanation || (m.streaming && !m.sections.Example && !m.sections.Question)) && (
+                          <div className="assistant-section explanation" style={{ marginBottom: "16px" }}>
+                            <strong>Explanation:</strong> {m.sections.Explanation}
+                            {m.streaming && !m.sections.Explanation && <span className="cursor">▋</span>}
+                          </div>
+                        )}
+                        {(m.sections.Example || (m.streaming && m.sections.Explanation && !m.sections.Question)) && (
+                          <div className="assistant-section example" style={{ marginBottom: "16px" }}>
+                            <strong>Example:</strong> {m.sections.Example}
+                            {m.streaming && m.sections.Explanation && !m.sections.Example && <span className="cursor">▋</span>}
+                          </div>
+                        )}
+                        {(m.sections.Question || (m.streaming && m.sections.Example)) && (
+                          <div className="assistant-section question" style={{ marginBottom: "16px" }}>
+                            <strong>Question:</strong> {m.sections.Question}
+                            {m.streaming && m.sections.Example && !m.sections.Question && <span className="cursor">▋</span>}
+                          </div>
+                        )}
                       </>
                     )}                  </>
                 ) : (
@@ -968,6 +993,15 @@ export default function App() {
               }}
               rows={1}
             />
+            {activeChat && activeChat.messages && activeChat.messages.length > 0 && !activeChat.quizState && !activeChat.showQuizSetup && (
+              <button 
+                className="quiz-button"
+                onClick={showQuizSetupUI}
+                title="Start Quiz on this topic"
+              >
+                🎯
+              </button>
+            )}
             <button 
               className={`mic-button ${isListening ? 'listening' : ''}`}
               onClick={toggleListening}

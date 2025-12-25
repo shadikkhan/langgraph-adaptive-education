@@ -119,6 +119,9 @@ html, body, #root {
   border-top: 1px solid #e5e7eb;
   background: #ffffff;
   flex-shrink: 0;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 100;
+  position: relative;
 }
 
 .textarea-container {
@@ -128,7 +131,7 @@ html, body, #root {
 
 .input-box textarea {
   width: 100%;
-  padding: 12px 90px 12px 14px;
+  padding: 12px 140px 12px 14px;
   font-size: 15px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
@@ -199,6 +202,29 @@ html, body, #root {
   color: white;
   border-color: #ef4444;
   animation: pulse 1.5s infinite;
+}
+
+.quiz-button {
+  position: absolute;
+  right: 92px;
+  bottom: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.quiz-button:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
 }
 
 @keyframes pulse {
