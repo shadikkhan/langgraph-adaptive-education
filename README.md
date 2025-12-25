@@ -664,7 +664,7 @@ MIT License - Feel free to use this project as a reference or starting point for
 
 **Built with ❤️ using LangGraph, LangChain, and modern web technologies**
 
-[▶ Watch demo video](https://raw.githubusercontent.com/shadikkhan/langgraph-adaptive-education/main/assets/local-demo.mp4)
+[▶ Watch demo video](https://github.com/user-attachments/assets/1f76ee4c-038b-4f8d-89db-695642d8e41e)
 
 *Watch the application in action: Multi-chat support, voice input, real-time AI streaming, and interactive quiz mode powered by local Ollama.*
 
