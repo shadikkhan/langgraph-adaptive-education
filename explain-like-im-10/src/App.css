@@ -237,6 +237,9 @@ audio {
   max-width: 800px;
   margin: 0 auto;
   text-align: center;
+  overflow-y: auto;
+  height: 100%;
+  padding: 24px;
 }
 
 .quiz-results h2 {
