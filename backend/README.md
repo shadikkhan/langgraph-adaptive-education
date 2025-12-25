@@ -1,13 +1,16 @@
 # Explain Like I'm 10 - Backend API
 
-This is the backend API for the "Explain Like I'm 10" application, which generates age-appropriate explanations using LangGraph and Ollama LLM with real-time streaming support, intent inference, and interactive quiz generation.
+This is the backend API for the "Explain Like I'm 10" application, which generates age-appropriate explanations using LangGraph and **local Ollama LLM** with real-time streaming support, intent inference, and interactive quiz generation.
+
+> **Note**: This project uses **local Ollama** for running language models. You must have Ollama installed and running on your machine to use this application.
 
 ## Architecture
 
 The backend is built with:
 - **FastAPI**: Web framework with async support and Server-Sent Events (SSE)
 - **LangGraph**: Workflow orchestration with intelligent intent-based routing
-- **Ollama**: Local LLM (llama3.1:8b) for generating content
+- **Ollama (Local)**: Self-hosted LLM server running llama3.1:8b model locally
+- **LangChain-Ollama**: Integration layer for Ollama with LangChain
 - **gTTS**: Google Text-to-Speech for audio generation
 - **Streaming AI**: Real-time response generation using `astream()` 
 
@@ -22,6 +25,7 @@ The backend is built with:
 - 🔊 **Audio Generation**: Text-to-speech for all responses
 - 🛡️ **Content Safety**: Multi-stage validation for age-appropriate content
 - 🔄 **Conditional Routing**: Dynamic workflow paths based on conversation context
+- 🏠 **Fully Local**: Runs entirely on your machine - no cloud API calls for AI
 
 ## Project Structure
 
@@ -44,42 +48,66 @@ backend/
 
 1. **Python 3.8+** (Python 3.10 or higher recommended)
 2. **pip** (Python package manager)
-3. **Ollama** installed with llama3.1:8b model
+3. **Ollama** installed and running locally with llama3.1:8b model
 
-### Step 1: Install Ollama
+### Step 1: Install Ollama Locally
+
+> **Important**: This project requires Ollama to be installed and running on your local machine. Ollama allows you to run large language models locally without sending data to cloud services.
 
 #### macOS
 ```bash
 # Install Ollama using Homebrew
 brew install ollama
 
-# Or download from https://ollama.ai
+# Or download the installer from https://ollama.ai
 ```
 
 #### Linux
 ```bash
+# Install using the official script
 curl -fsSL https://ollama.ai/install.sh | sh
 ```
 
 #### Windows
 Download and install from: https://ollama.ai/download
 
-### Step 2: Pull the LLM Model
+### Step 2: Start Ollama Service
 
 ```bash
-# Start Ollama service (if not auto-started)
+# Start the Ollama service (runs in the background)
 ollama serve
+```
 
-# In a new terminal, pull the model
+The Ollama server will start on `http://localhost:11434` by default.
+
+> **Tip**: You can check if Ollama is running by visiting http://localhost:11434 in your browser. You should see "Ollama is running".
+
+### Step 3: Pull the Required LLM Model
+
+```bash
+# In a new terminal window, pull the llama3.1:8b model
 ollama pull llama3.1:8b
 ```
+
+This downloads the Llama 3.1 8B parameter model (~4.7GB). The download might take a few minutes depending on your internet speed.
 
 Verify the model is installed:
 ```bash
 ollama list
 ```
 
-### Step 3: Set Up Python Environment
+You should see `llama3.1:8b` in the list of installed models.
+
+### Step 4: Test Ollama (Optional but Recommended)
+
+```bash
+# Test the model directly
+ollama run llama3.1:8b "Explain gravity like I'm 10"
+```
+
+If you see a response, Ollama is working correctly!
+
+### Step 5: Set Up Python Environment
 
 #### Option A: Using Virtual Environment (Recommended)
 
@@ -177,6 +205,24 @@ curl -X POST http://localhost:8000/explain \
 
 ## Running the Server
 
+### Important: Start Ollama First!
+
+Before starting the backend, ensure Ollama is running:
+
+```bash
+# In a separate terminal
+ollama serve
+```
+
+Verify Ollama is ready:
+```bash
+# Should show: "Ollama is running"
+curl http://localhost:11434
+
+# Test the model
+ollama run llama3.1:8b "Hello"
+```
+
 ### Development Mode (with auto-reload)
 
 ```bash
@@ -215,6 +261,50 @@ kill <PID>
 ```
 
 The API will be available at `http://localhost:8000`
+
+## Configuration
+
+### Ollama Connection
+
+The backend connects to local Ollama at `http://localhost:11434`. Configuration is in `config.py`:
+
+```python
+from langchain_ollama import OllamaLLM
+
+# Model settings
+LLM_MODEL = "llama3.1:8b"      # Model to use
+LLM_TEMPERATURE = 0             # 0 = deterministic, higher = creative
+
+llm = OllamaLLM(
+    model=LLM_MODEL,
+    temperature=LLM_TEMPERATURE
+)
+```
+
+**Using a Different Model:**
+1. Pull the model: `ollama pull <model-name>`
+2. Update `LLM_MODEL` in `config.py`
+3. Restart the backend
+
+**Recommended Models:**
+- `llama3.1:8b` - Best balance (~4.7GB) ⭐ Default
+- `llama3.1:70b` - More capable (~40GB, requires powerful hardware)
+- `mistral` - Alternative option (~4GB)
+- `phi3` - Faster, smaller (~2.3GB)
+
+Run `ollama list` to see installed models.
+
+### Environment Variables (Optional)
+
+```bash
+# Use Ollama on a different machine
+export OLLAMA_HOST=http://192.168.1.100:11434
+python main.py
+
+# Change port
+export PORT=8080
+python main.py
+```
 
 ## API Endpoints
 
