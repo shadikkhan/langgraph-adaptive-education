@@ -664,9 +664,7 @@ MIT License - Feel free to use this project as a reference or starting point for
 
 **Built with ❤️ using LangGraph, LangChain, and modern web technologies**
 
-## 🎥 Demo Video
-
-https://github.com/user-attachments/assets/local-demo.mp4
+**[Watch the video here](assets/your_video_file.mp4)**
 
 *Watch the application in action: Multi-chat support, voice input, real-time AI streaming, and interactive quiz mode powered by local Ollama.*
 
