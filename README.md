@@ -1,6 +1,8 @@
 # Explain Like I'm 10 🎓
 
-An intelligent, age-adaptive educational platform powered by **LangGraph** workflows and **Ollama LLM** that generates personalized explanations for any topic based on the user's age and comprehension level.
+An intelligent, age-adaptive educational platform powered by **LangGraph** workflows and **local Ollama LLM** that generates personalized explanations for any topic based on the user's age and comprehension level.
+
+> **Note**: This project uses **local Ollama** for running the language model. All AI processing happens on your machine - no cloud API calls required.
 
 ## 🌟 Project Overview
 
@@ -11,30 +13,33 @@ This project demonstrates advanced AI orchestration using **LangChain** and **La
 - **Produces thought-provoking follow-up questions** to enhance learning
 - **Infers user intent** automatically (new question, answer, or follow-up)
 - **Evaluates user answers** with encouraging, personalized feedback
-- **Interactive Quiz Mode** with multiple-choice questions and instant feedback
+- **Interactive Quiz Mode** with multiple-choice questions per chat
 - **Ensures content safety** through multi-stage validation
 - **Provides audio narration** using text-to-speech
-- **Manages multi-conversation chat history** with local persistence
+- **Manages multi-conversation chat history** with local persistence (24-hour retention)
 - **Supports voice input** using Web Speech API for hands-free interaction
 - **Streams AI responses** in real-time for immediate engagement
+- **Fully local AI** - runs entirely on your machine using Ollama
 
 ## 🧠 AI & Technology Stack
 
 ### Backend - AI Orchestration
 - **LangGraph**: State machine-based workflow orchestration with intent inference
 - **LangChain**: LLM integration framework with Ollama
-- **Ollama**: Local LLM deployment (llama3.1:8b model)
+- **Ollama (Local)**: Self-hosted LLM server running llama3.1:8b model locally
 - **FastAPI**: High-performance async API framework with Server-Sent Events (SSE)
 - **Pydantic**: Type-safe data validation and modeling
 - **gTTS**: Google Text-to-Speech for audio generation
 
 ### Frontend - Modern React
-- **React 18**: Component-based UI with hooks
-- **Vite**: Next-generation frontend tooling
-- **Web Speech API**: Voice-to-text input support
+- **React 18**: Component-based UI with hooks and modular architecture
+- **Vite 7**: Next-generation frontend tooling and build system
+- **Web Speech API**: Voice-to-text input support (webkitSpeechRecognition)
 - **Server-Sent Events (SSE)**: Real-time streaming from backend
-- **CSS Grid/Flexbox**: Responsive three-column layout with quiz mode
+- **LocalStorage API**: Persistent chat storage with auto-cleanup
+- **CSS Grid/Flexbox**: Responsive three-column layout with floating input box
 - **Inter Font**: Professional typography
+- **Environment Variables**: Configurable API endpoints
 
 ## 🔄 LangGraph Workflow Architecture
 
@@ -166,48 +171,87 @@ The application uses a **directed acyclic graph (DAG)** with **intelligent inten
 
 ```
 explain-10/
-├── backend/                    # Python FastAPI backend
-│   ├── main.py                # Application entry point
-│   ├── graph.py               # LangGraph workflow definitions
-│   ├── routes.py              # API endpoints
-│   ├── models.py              # Pydantic data models
-│   ├── config.py              # Configuration & LLM setup
-│   ├── tts.py                 # Text-to-speech integration
-│   ├── topic_packs.py         # Pre-defined topics
-│   ├── requirements.txt       # Python dependencies
-│   ├── audio/                 # Generated audio files
-│   └── README.md              # Backend documentation
+├── backend/                         # Python FastAPI backend
+│   ├── main.py                     # Application entry point
+│   ├── graph.py                    # LangGraph workflow definitions
+│   ├── routes.py                   # API endpoints with SSE streaming
+│   ├── models.py                   # Pydantic data models
+│   ├── config.py                   # Configuration & Ollama setup
+│   ├── tts.py                      # Text-to-speech integration
+│   ├── topic_packs.py              # Pre-defined topic categories
+│   ├── requirements.txt            # Python dependencies
+│   ├── audio/                      # Generated audio files
+│   └── README.md                   # Backend setup & API documentation
 │
-└── explain-like-im-10/        # React frontend
+└── explain-like-im-10/             # React frontend
     ├── src/
-    │   ├── App.jsx            # Main React component
-    │   ├── App.css            # Component styles
-    │   ├── index.css          # Global styles
-    │   └── main.jsx           # React entry point
-    ├── public/                # Static assets
-    ├── package.json           # Node dependencies
-    ├── vite.config.js         # Vite configuration
-    └── README.md              # Frontend documentation
+    │   ├── components/             # Modular UI components
+    │   │   ├── LeftSidebar.jsx    # Chat list navigation
+    │   │   ├── RightSidebar.jsx   # Age slider & topic packs
+    │   │   ├── QuizSetup.jsx      # Quiz configuration UI
+    │   │   ├── QuizContainer.jsx  # Quiz questions & results
+    │   │   ├── MessageList.jsx    # Chat message rendering
+    │   │   └── InputBox.jsx       # Input with quiz/mic/send buttons
+    │   ├── hooks/                  # Custom React hooks
+    │   │   ├── useSpeechRecognition.js  # Voice input logic
+    │   │   └── useChatStorage.js        # LocalStorage persistence
+    │   ├── App.jsx                 # Main application container
+    │   ├── App.css                 # Component-specific styles
+    │   ├── index.css               # Global styles
+    │   └── main.jsx                # React entry point
+    ├── public/                     # Static assets
+    ├── .env                        # Environment variables (not committed)
+    ├── .env.example                # Environment template
+    ├── package.json                # Node dependencies
+    ├── vite.config.js              # Vite configuration
+    └── README.md                   # Frontend setup & architecture
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.10+
-- Node.js 16+
-- Ollama with llama3.1:8b model
 
-### Backend Setup
+**Required:**
+- **Ollama** - For running the local LLM ([Installation Guide](#step-1-install-ollama-locally))
+- **Python 3.8+** - Backend runtime
+- **Node.js 16+** - Frontend development
+
+### Step 1: Install Ollama Locally
+
+> **Important**: This project requires Ollama to be installed and running on your local machine. Ollama allows you to run large language models locally without sending data to cloud services.
+
+#### macOS
+```bash
+# Install using Homebrew
+brew install ollama
+
+# Or download from https://ollama.ai
+```
+
+#### Linux
+```bash
+curl -fsSL https://ollama.ai/install.sh | sh
+```
+
+#### Windows
+Download from: https://ollama.ai/download
+
+### Step 2: Start Ollama and Pull Model
 
 ```bash
-# Install Ollama
-brew install ollama  # macOS
-# or visit https://ollama.ai for other platforms
+# Start Ollama service
+ollama serve
 
-# Pull the LLM model
+# In a new terminal, pull the required model (~4.7GB)
 ollama pull llama3.1:8b
 
-# Navigate to backend
+# Verify installation
+ollama list
+```
+
+### Step 3: Setup Backend
+
+```bash
 cd backend
 
 # Create virtual environment
@@ -221,26 +265,89 @@ pip install -r requirements.txt
 # Create audio directory
 mkdir -p audio
 
-# Start the server
+# Start backend server
 python main.py
 ```
 
 Backend runs at: `http://localhost:8000`
 
-### Frontend Setup
+### Step 4: Setup Frontend
 
 ```bash
-# Navigate to frontend
 cd explain-like-im-10
 
 # Install dependencies
 npm install
+
+# Configure environment (optional - uses localhost:8000 by default)
+cp .env.example .env
 
 # Start development server
 npm run dev
 ```
 
 Frontend runs at: `http://localhost:5173`
+
+### Step 5: Open Application
+
+Visit `http://localhost:5173` in your browser and start learning!
+
+## 📖 Detailed Setup
+
+For detailed setup instructions, API documentation, and architecture details, see:
+- **Backend**: [backend/README.md](backend/README.md) - Ollama setup, API endpoints, LangGraph workflow
+- **Frontend**: [explain-like-im-10/README.md](explain-like-im-10/README.md) - Component architecture, state management
+
+## 🎮 Usage Guide
+
+Frontend runs at: `http://localhost:5173`
+
+## 🎮 Usage Guide
+
+### Starting a New Chat
+
+1. Click "New Chat" button in the left sidebar
+2. Ask any question or select from topic packs (right sidebar)
+3. AI will stream a personalized explanation based on your age level
+4. Each explanation includes:
+   - **Explanation**: Age-appropriate answer
+   - **Example**: Relatable real-world example
+   - **Question**: Follow-up question to deepen understanding
+
+### Using Quiz Mode
+
+1. **Start a conversation** first (quiz button appears after first message)
+2. Click the **🎯 quiz button** in the input box
+3. **Configure quiz**:
+   - Topic auto-fills from conversation
+   - Select difficulty (Easy/Medium/Hard)
+   - Adjust age level if needed
+4. **Answer questions**: 5 multiple-choice questions with instant feedback
+5. **Review results**: See score and detailed explanation for each question
+6. **Retry or Exit**: Generate new quiz or return to explanation mode
+
+### Voice Input
+
+1. Click the **🎤 microphone button**
+2. Speak your question
+3. Click **⏹** to stop recording
+4. Transcribed text appears in input box
+5. Press **➤** send button or hit Enter
+
+### Multi-Chat Management
+
+- **Create**: Click "New Chat" for new conversation
+- **Switch**: Click any chat in left sidebar to activate it
+- **Persistence**: Chats saved for 24 hours in localStorage
+- **Auto-cleanup**: Old chats automatically removed after expiration
+
+### Adjusting Age Level
+
+Use the **age slider** (5-35 years) in the right sidebar to customize:
+- Vocabulary complexity
+- Explanation depth
+- Example relatability
+- Question difficulty
 
 ## 📊 API Architecture
 
@@ -407,35 +514,117 @@ LLM_TEMPERATURE = 0             # Deterministic responses
 ExplainState → Simplify → Add Example → Think Question → Safety Check → Output
 ```
 
+## � Troubleshooting
+
+### Ollama Issues
+
+**Problem**: "Connection refused" or "Failed to connect to Ollama"
+```bash
+# Solution: Check if Ollama is running
+ollama serve
+
+# In another terminal, verify:
+curl http://localhost:11434
+# Should return: "Ollama is running"
+```
+
+**Problem**: Model not found
+```bash
+# Solution: Pull the model again
+ollama pull llama3.1:8b
+
+# Verify it's installed
+ollama list
+```
+
+**Problem**: Slow responses
+- Ensure you have at least 8GB of RAM available
+- Close other memory-intensive applications
+- Check CPU usage with `top` or Activity Monitor
+- Consider using a smaller model like `llama3.1:7b` if needed
+
+**Problem**: Ollama service stops unexpectedly
+```bash
+# Restart Ollama
+pkill ollama
+ollama serve
+```
+
+### Backend Issues
+
+**Problem**: Import errors or missing packages
+```bash
+# Reinstall dependencies
+pip install -r requirements.txt --force-reinstall
+```
+
+**Problem**: Audio files not generating
+```bash
+# Ensure audio directory exists
+mkdir -p backend/audio
+
+# Check gTTS is working
+python -c "from gtts import gTTS; print('gTTS OK')"
+```
+
+**Problem**: CORS errors
+- Ensure frontend is running on `http://localhost:5173`
+- Check `config.py` CORS settings include your frontend URL
+
+### Frontend Issues
+
+**Problem**: Voice input not working
+- Use Chrome, Edge, or Safari (Web Speech API requirement)
+- Grant microphone permissions when prompted
+- Check browser console for errors
+
+**Problem**: API connection failed
+- Verify `.env` has correct `VITE_API_URL`
+- Ensure backend is running on the configured port
+- Check browser console for network errors
+
+**Problem**: Chat history lost
+- Chats expire after 24 hours (by design)
+- Check browser localStorage isn't full
+- Ensure localStorage isn't disabled in browser settings
+
 ## 📈 Skills Demonstrated
 
 ### AI/ML Engineering
 ✅ LangGraph workflow orchestration  
-✅ LangChain LLM integration  
+✅ LangChain LLM integration with local Ollama  
 ✅ Prompt engineering & optimization  
 ✅ State machine design  
 ✅ Multi-agent reasoning systems  
 ✅ Content safety & validation  
+✅ Real-time streaming with SSE  
+✅ Intent classification & routing  
 
 ### Backend Development
 ✅ FastAPI async architecture  
 ✅ RESTful API design  
+✅ Server-Sent Events (SSE) streaming  
 ✅ CORS configuration  
 ✅ File streaming & management  
-✅ Type-safe data modeling  
+✅ Type-safe data modeling (Pydantic)  
+✅ Local LLM integration  
 
 ### Frontend Development
-✅ React hooks & state management  
+✅ React 18 hooks & state management  
+✅ Custom hooks (useSpeechRecognition, useChatStorage)  
+✅ Modular component architecture  
 ✅ Responsive CSS Grid/Flexbox  
 ✅ Event handling & audio sync  
-✅ Component architecture  
-✅ API integration  
+✅ LocalStorage persistence  
+✅ SSE client implementation  
+✅ Voice input (Web Speech API)  
 
 ### DevOps & Architecture
 ✅ Microservices design  
-✅ Environment configuration  
+✅ Environment configuration (.env)  
 ✅ Dependency management  
 ✅ Documentation practices  
+✅ Local-first architecture  
 
 ## 🔍 Use Cases
 
