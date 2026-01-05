@@ -185,9 +185,9 @@ def build_explain_graph():
     # Add nodes
     graph.add_node("infer_intent", infer_intent)
     graph.add_node("simplify", simplify)
-    graph.add_node("example", example)
+    graph.add_node("generate_example", example)
     graph.add_node("safety", safety)
-    graph.add_node("question", question)
+    graph.add_node("generate_question", question)
     graph.add_node("evaluate", evaluate_answer)
     graph.add_node("format", format_out)
     
@@ -205,10 +205,10 @@ def build_explain_graph():
     )
     
     # Explanation path
-    graph.add_edge("simplify", "example")
-    graph.add_edge("example", "safety")
-    graph.add_edge("safety", "question")
-    graph.add_edge("question", "format")
+    graph.add_edge("simplify", "generate_example")
+    graph.add_edge("generate_example", "safety")
+    graph.add_edge("safety", "generate_question")
+    graph.add_edge("generate_question", "format")
     
     # Answer evaluation path
     graph.add_edge("evaluate", "format")
